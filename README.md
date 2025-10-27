@@ -1,7 +1,7 @@
 ### Flying Drone DIY
 This project is about process of designing, assembling and programming custom flying drone. The work is mostly done on physics, mechanics and electronics. However, the project has reached the stage when it starts demand custom programming logic and that's a reason behind creating this repo. 
 
-# Drone Versions Summary
+### Drone Versions Summary
 
 | Version | Brief Purpose | Business Intent / Technical Task / Tech Components |
 |---------|---------------|---------------------------------------------------|
