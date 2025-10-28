@@ -73,48 +73,6 @@ async def goto_position(drone, north_m, east_m, down_m, yaw_deg=0):
             break
         await asyncio.sleep(0.5)
 
-# async def test_code():
-#     drone = await connect_drone()
-#     target_alt = 100
-
-#     print("Arming drone...")
-#     await drone.action.arm()
-
-#     print(f"Taking off to {target_alt} meters...")
-#     await drone.action.takeoff()
-
-#     # Контроль фактической высоты
-#     async for pos in drone.telemetry.position():
-#         alt = pos.relative_altitude_m
-#         print(f" Altitude: {alt:.1f} m")
-#         predefined_firmware_hover_alt = 2  # 2 meters is a default altitude on take_off
-#         if alt >= predefined_firmware_hover_alt * 0.95:
-#             print("Reached target altitude")
-#             break
-#         await asyncio.sleep(0.5)
-
-#     # Запускаем Offboard
-#     print("Attempt to start offboard")
-#     await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -0.5, 0.0))  # небольшое ускорение вверх
-#     try:
-#         await drone.offboard.start()
-#     except OffboardError as e:
-#         print(f"Failed to start Offboard: {e}")
-#         return
-
-#     async for position in drone.telemetry.position():
-#         alt = position.relative_altitude_m
-#         print(f"Altitude: {alt:.1f} m")
-#         if alt >= target_alt:
-#             print("Reached target altitude")
-#             break
-#         # Отправляем команду вверх каждый цикл
-#         await drone.offboard.set_position_ned(PositionNedYaw(0.0, 0.0, -target_alt, 0.0))
-#         await asyncio.sleep(0.5)
-
-# async def main():
-#     await test_code()
-
 # -------------------- MAIN --------------------
 async def main():
     drone = await connect_drone()
