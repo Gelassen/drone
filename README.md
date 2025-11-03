@@ -21,6 +21,12 @@ $ cd "custom behabiour"
 $ python <filename>.py
 ```
 
+To run simulation with gazebo (more complete physical engine) run this:
+```
+$ chmod +x run_sitl_gazebo.sh
+$ ./run_sitl_gazebo.sh
+```
+
 Related publications:
 
 <a href="https://gelassen.github.io/blog/2025/10/18/flying-drone-diy-part-III.html">Flying Drone DIY, Part III: Assembling and Tuning</a>
