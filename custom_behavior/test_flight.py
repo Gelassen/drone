@@ -6,7 +6,7 @@ from mavsdk.offboard import OffboardError, PositionNedYaw, VelocityNedYaw
 # -------------------- ФУНКЦИИ --------------------
 async def connect_drone():
     drone = System()
-    await drone.connect(system_address="udpin://127.0.0.1:14551")
+    await drone.connect(system_address="udpin://127.0.0.1:14552")
 
     print("Connecting to drone...")
     async for state in drone.core.connection_state():
@@ -16,7 +16,7 @@ async def connect_drone():
     return drone
 
 async def arm_and_takeoff(drone):
-    default_alt = 2 # by default 2 meters is a target alt on takeoff
+    default_alt = 1.7 # by default 2 meters is a target alt on takeoff (1.7 for gazebo iris_runaway)
     print("Arming drone...")
     await drone.action.arm()
 
@@ -106,8 +106,16 @@ async def main():
     # Посадка
     print("Landing...")
     await drone.action.land()
-    await asyncio.sleep(10)
+    
+    async for in_air in drone.telemetry.in_air():
+        if not in_air:
+            break
 
+    async for is_armed in drone.telemetry.armed():
+        if not is_armed:
+            break
+
+    print("Landed and disarmed. Disconnecting.")
     await drone.disconnect()
     print("Mission complete")
 
