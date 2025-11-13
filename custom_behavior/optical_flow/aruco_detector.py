@@ -4,6 +4,69 @@ import sys
 import signal
 from typing import List, Tuple, Optional, Dict, Any
 
+
+class AdaptiveFrameProcessor:
+    @staticmethod
+    def preprocess_region_aware(frame: np.ndarray) -> np.ndarray:
+        """Разная предобработка для разных зон кадра"""
+        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        
+        # Разделяем кадр на зоны
+        height, width = gray.shape
+        top_region = gray[0:height//2, :]
+        bottom_region = gray[height//2:, :]
+        
+        # Разная обработка для верхней и нижней частей
+        top_processed = cv2.equalizeHist(top_region)
+        top_processed = cv2.GaussianBlur(top_processed, (3, 3), 0)
+        
+        # Более агрессивная обработка для нижней части
+        bottom_processed = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8,8)).apply(bottom_region)
+        bottom_processed = cv2.medianBlur(bottom_processed, 3)
+        bottom_processed = cv2.GaussianBlur(bottom_processed, (5, 5), 0)
+        
+        # Собираем обратно
+        processed = np.vstack([top_processed, bottom_processed])
+        return processed
+    
+    @staticmethod
+    def enhance_contrast_local(frame: np.ndarray) -> np.ndarray:
+        """Локальное улучшение контраста"""
+        # CLAHE для локального контраста
+        clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
+        enhanced = clahe.apply(frame)
+        
+        # Уменьшение шума
+        denoised = cv2.fastNlMeansDenoising(enhanced)
+        return denoised
+
+class MultiPassDetector:
+    def __init__(self):
+        self.presets = [
+            {"name": "aggressive", "params": self._get_aggressive_params()},
+            {"name": "conservative", "params": self._get_conservative_params()},
+            {"name": "edge_cases", "params": self._get_edge_case_params()}
+        ]
+    
+    def _get_aggressive_params(self):
+        """Параметры для обнаружения сложных маркеров"""
+        params = cv2.aruco.DetectorParameters()
+        params.minMarkerPerimeterRate = 0.01
+        params.maxMarkerPerimeterRate = 8.0
+        params.adaptiveThreshConstant = 3
+        params.minCornerDistanceRate = 0.02
+        return params
+    
+    def _get_edge_case_params(self):
+        """Параметры для маркеров на границах и в сложных условиях"""
+        params = cv2.aruco.DetectorParameters()
+        params.minMarkerPerimeterRate = 0.008
+        params.polygonalApproxAccuracyRate = 0.05
+        params.adaptiveThreshWinSizeMin = 5
+        params.adaptiveThreshWinSizeMax = 31
+        params.maxErroneousBitsInBorderRate = 0.8
+        return params
+
 class ArucoMarker:
     """Класс для представления обнаруженного маркера"""
     
@@ -97,11 +160,35 @@ class ArUcoDetector:
         self._setup_parameters()
     
     def _setup_parameters(self) -> None:
-        """Настройка параметров детектора"""
+        # """Настройка параметров детектора"""
+        # self.parameters.adaptiveThreshConstant = 5
+        # self.parameters.minMarkerPerimeterRate = 0.02
+        # self.parameters.maxMarkerPerimeterRate = 4.0
+        # self.parameters.polygonalApproxAccuracyRate = 0.02
+
+        # Базовые параметры
         self.parameters.adaptiveThreshConstant = 5
-        self.parameters.minMarkerPerimeterRate = 0.02
+        self.parameters.minMarkerPerimeterRate = 0.01  # уменьшить для дальних/маленьких
         self.parameters.maxMarkerPerimeterRate = 4.0
         self.parameters.polygonalApproxAccuracyRate = 0.02
+        
+        # Критически важные параметры для сложных случаев
+        self.parameters.minCornerDistanceRate = 0.05  # уменьшить для близких углов
+        self.parameters.minMarkerDistanceRate = 0.05  # уменьшить для близких маркеров
+        self.parameters.minDistanceToBorder = 1       # маркеры у границ
+        
+        # Параметры для улучшения детекции в сложных условиях
+        self.parameters.adaptiveThreshWinSizeMin = 3
+        self.parameters.adaptiveThreshWinSizeMax = 23
+        self.parameters.adaptiveThreshWinSizeStep = 10
+        
+        # Корреляция с шаблоном
+        self.parameters.minOtsuStdDev = 5.0  # снизить порог для темных областей
+        self.parameters.perspectiveRemovePixelPerCell = 8  # увеличить разрешение
+        self.parameters.perspectiveRemoveIgnoredMarginPerCell = 0.13
+        
+        # Параметры контуров
+        self.parameters.maxErroneousBitsInBorderRate = 0.5  # разрешить больше шума
     
     def preProcess(self, frame: np.ndarray) -> np.ndarray:
         """Предобработка кадра"""
@@ -181,6 +268,77 @@ class ArUcoDetector:
                 print(f"[DICT_{self.current_dict}] ID:{marker.id} "
                       f"Roll: {marker.roll:7.2f}°, Pitch: {marker.pitch:7.2f}°, "
                       f"Yaw: {marker.yaw:7.2f}°")
+
+class AdvancedArUcoDetector(ArUcoDetector):
+    def process_advanced(self, frame: np.ndarray) -> bool:
+        """Расширенная стратегия детекции с несколькими попытками"""
+        self.detected_markers.clear()
+        
+        # Попытка 1: Стандартная детекция
+        if self._try_detect_standard(frame):
+            return True
+            
+        # Попытка 2: Детекция с улучшенной предобработкой
+        if self._try_detect_enhanced(frame):
+            return True
+            
+        # Попытка 3: Детекция по регионам
+        if self._try_detect_regional(frame):
+            return True
+            
+        return False
+    
+    def _try_detect_standard(self, frame: np.ndarray) -> bool:
+        """Стандартная детекция"""
+        for dict_type in self.aruco_dicts:
+            aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+            corners, ids, _ = cv2.aruco.detectMarkers(frame, aruco_dict, parameters=self.parameters)
+            
+            if ids is not None and len(ids) > 0:
+                self.current_dict = dict_type
+                self._process_detected_markers(corners, ids)
+                return True
+        return False
+    
+    def _try_detect_enhanced(self, frame: np.ndarray) -> bool:
+        """Детекция с улучшенной предобработкой"""
+        enhanced_frame = AdaptiveFrameProcessor.preprocess_region_aware(frame)
+        
+        for dict_type in self.aruco_dicts:
+            aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+            corners, ids, _ = cv2.aruco.detectMarkers(enhanced_frame, aruco_dict, parameters=self.parameters)
+            
+            if ids is not None and len(ids) > 0:
+                self.current_dict = dict_type
+                self._process_detected_markers(corners, ids)
+                return True
+        return False
+    
+    def _try_detect_regional(self, frame: np.ndarray) -> bool:
+        """Детекция по регионам (особенно нижняя часть)"""
+        height, width = frame.shape[:2]
+        bottom_region = frame[height//2:, :]  # Нижняя половина
+        
+        for dict_type in self.aruco_dicts:
+            aruco_dict = cv2.aruco.getPredefinedDictionary(dict_type)
+            
+            # Агрессивные параметры для нижней части
+            aggressive_params = self._get_aggressive_parameters()
+            
+            corners, ids, _ = cv2.aruco.detectMarkers(bottom_region, aruco_dict, parameters=aggressive_params)
+            
+            if ids is not None and len(ids) > 0:
+                self.current_dict = dict_type
+                # Корректируем координаты углов обратно в полный кадр
+                adjusted_corners = []
+                for corner in corners:
+                    adjusted_corner = corner.copy()
+                    adjusted_corner[:, :, 1] += height // 2  # Сдвигаем Y координату
+                    adjusted_corners.append(adjusted_corner)
+                
+                self._process_detected_markers(adjusted_corners, ids)
+                return True
+        return False
 
 
 class VideoProcessor:

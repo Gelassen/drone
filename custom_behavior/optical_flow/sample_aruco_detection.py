@@ -3,8 +3,20 @@ import numpy as np
 import cv2
 from aruco_detector import (
     ArUcoDetector,
+    AdvancedArUcoDetector,
     VideoProcessor
 )
+
+def get_improved_camera_calibration():
+    """Улучшенная калибровка с учетом дисторсий"""
+    camera_matrix = np.array([[920, 0, 640],
+                              [0, 920, 360], 
+                              [0, 0, 1]], dtype=np.float32)
+    
+    # Добавляем реалистичные коэффициенты дисторсии
+    dist_coeffs = np.array([-0.2, 0.1, 0.001, 0.001, 0.0], dtype=np.float32)
+    
+    return camera_matrix, dist_coeffs
 
 def main():
     """Главная функция приложения"""
@@ -17,10 +29,12 @@ def main():
     ]
     
     # Псевдокалибровка камеры
-    camera_matrix = np.array([[920, 0, 640],
-                              [0, 920, 360],
-                              [0, 0, 1]], dtype=np.float32)
-    dist_coeffs = np.zeros((5, 1))
+    # camera_matrix = np.array([[920, 0, 640],
+    #                           [0, 920, 360],
+    #                           [0, 0, 1]], dtype=np.float32)
+    # dist_coeffs = np.zeros((5, 1))
+
+    camera_matrix, dist_coeffs = get_improved_camera_calibration()
     
     # --- Обработчик завершения ---
     def handle_exit(signum=None, frame=None):
@@ -33,7 +47,7 @@ def main():
     try:
         # Инициализация компонентов
         video_processor = VideoProcessor("../../assets/ar_test_video.MOV")
-        aruco_detector = ArUcoDetector(ARUCO_DICTS, camera_matrix, dist_coeffs)
+        aruco_detector = AdvancedArUcoDetector(ARUCO_DICTS, camera_matrix, dist_coeffs)
         
         # --- Главный цикл обработки ---
         while True:
@@ -46,7 +60,7 @@ def main():
             processed_frame = aruco_detector.preProcess(frame)
             
             # Основная обработка
-            detected = aruco_detector.process(frame)  # Используем оригинальный frame для детекции
+            detected = aruco_detector.process_advanced(frame)  # Используем оригинальный frame для детекции
             
             # Постобработка
             aruco_detector.postProcess(frame)
