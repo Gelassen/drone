@@ -3,6 +3,13 @@ import numpy as np
 import sys
 import signal
 from typing import List, Tuple, Optional, Dict, Any
+from enum import Enum
+
+class DetectionStrategy(Enum):
+    STANDARD = "standard"
+    MULTI_PASS = "multi_pass"
+    REGION_AWARE = "region_aware"
+    ADAPTIVE = "adaptive"
 
 
 class AdaptiveFrameProcessor:
