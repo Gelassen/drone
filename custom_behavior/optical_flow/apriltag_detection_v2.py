@@ -3,16 +3,16 @@ import numpy as np
 import apriltag
 
 # --- AprilTag детектор ---
-apriltag_detector = apriltag.Detector(apriltag.DetectorOptions(families="tag36h11"))
+apriltag_detector = apriltag.Detector(apriltag.DetectorOptions(families="tag16h5"))
 
-# --- Камера ---
+# --- Камера / видео ---
 video_path = "../../assets/ar_test_video.MOV"
 cap = cv2.VideoCapture(video_path)
 
-# Параметры фильтрации квадратов
-MIN_AREA = 2000      # минимальная площадь квадрата (маркер)
-MAX_AREA = 15000     # максимальная площадь квадрата (игнорировать лист)
-ASPECT_RATIO_TOL = 0.2  # допускаемое отклонение сторон от 1:1
+# --- Параметры фильтрации квадратов ---
+MIN_AREA = 2000
+MAX_AREA = 15000
+ASPECT_RATIO_TOL = 0.2
 
 def find_squares(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
@@ -32,28 +32,42 @@ def find_squares(frame):
                 squares.append((x, y, w, h))
     return squares
 
+def draw_axes(frame, corners, scale=20):
+    print("draw_axes is called")
+    """Рисуем локальные 2D-оси маркера по его углам"""
+    corners = corners.astype(int)
+    center = corners.mean(axis=0).astype(int)
+    
+    # ось X — от центра к первому углу
+    cv2.line(frame, tuple(center), tuple(corners[0]), (0,0,255), 2)
+    # ось Y — от центра к следующему углу (по часовой стрелке)
+    cv2.line(frame, tuple(center), tuple(corners[1]), (0,255,0), 2)
+    # ось Z — для наглядности вертикальная линия через центр (синяя)
+    cv2.line(frame, tuple(center), (center[0], center[1]-scale), (255,0,0), 2)
+
 while True:
     ret, frame = cap.read()
     if not ret:
         break
 
     squares = find_squares(frame)
+    print("Inference is running")
     
     for (x, y, w, h) in squares:
-        # Нарисуем квадрат (для визуализации)
         cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,255), 2)
-        
-        # --- Вырезаем ROI и ищем AprilTags ---
         roi = frame[y:y+h, x:x+w]
         gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         detections = apriltag_detector.detect(gray_roi)
         
+        print("detections length is ", len(detections))
         for det in detections:
-            corners = det.corners.astype(int) + np.array([x, y])
-            cv2.polylines(frame, [corners], isClosed=True, color=(0,255,0), thickness=2)
-            cv2.putText(frame, f"ID: {det.tag_id}", tuple(corners[0]), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
-    
-    cv2.imshow("Filtered Squares + AprilTags", frame)
+            corners = det.corners + np.array([x, y])
+            cv2.polylines(frame, [corners.astype(int)], isClosed=True, color=(0,255,0), thickness=2)
+            cv2.putText(frame, f"ID: {det.tag_id}", tuple(corners[0].astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
+            
+            draw_axes(frame, corners, scale=15)
+
+    cv2.imshow("Filtered Squares + AprilTags + Axes", frame)
     
     if cv2.waitKey(1) & 0xFF == ord('q'):
         break
