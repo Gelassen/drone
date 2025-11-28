@@ -22,6 +22,9 @@ var/
 *.egg-info/
 .installed.cfg
 *.egg
+ardupilot/
+QGroundControl-x86_64.AppImage
+ardupilot_gazebo/
 
 # Virtual environments
 .venv/

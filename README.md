@@ -13,16 +13,54 @@ This project is about process of designing, assembling and programming custom fl
 ### Deployment
 Start simulation environment first and run flights second
 ```
+$ sudo apt update
+$ sudo apt install git python3 python3-pip python3-dev \
+    python3-future python3-lxml python3-pyproj python3-matplotlib \
+    python3-opencv python3-numpy python3-pip \
+    build-essential pkg-config \
+    libxml2-dev libxslt-dev \
+    libudev-dev \
+    genromfs
+
+$ cd ~
+$ git clone https://github.com/ArduPilot/ardupilot.git
+$ cd ardupilot
+$ git submodule update --init --recursive
+
+$ Tools/environment_install/install-prereqs-ubuntu.sh -y
+$ . ~/.profile
+
+$ wget https://github.com/mavlink/qgroundcontrol/releases/download/latest/QGroundControl.AppImage
+$ chmod +x QGroundControl.AppImage
+
+$ cd ~
+$ git clone https://github.com/ArduPilot/ardupilot_gazebo.git
+$ cd ardupilot_gazebo
+$ mkdir build && cd build
+$ cmake .. -DCMAKE_BUILD_TYPE=Release
+$ make -j$(nproc)
+$ sudo make install
+
+
 $ chmod +x setup_simulations_env.sh && ./setup_simulations_env.sh
 $ python -m venv .venv
 $ source .venv/bin/activate
 $ pip install -r requirements.txt
-$ cd "custom behabiour"
+$ cd "custom behavior"
 $ python <filename>.py
 ```
 
 To run simulation with gazebo (more complete physical engine) run this:
 ```
+$ sudo apt-get update
+$ sudo apt-get install curl lsb-release gnupg
+
+$ sudo curl https://packages.osrfoundation.org/gazebo.gpg --output /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg
+$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-stable.list > /dev/null
+$ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-prerelease $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-prerelease.list > /dev/null
+$ sudo apt-get update
+$ sudo apt-get install gz-jetty
+
 $ chmod +x run_sitl_gazebo.sh
 $ ./run_sitl_gazebo.sh
 ```
