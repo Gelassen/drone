@@ -32,22 +32,6 @@ $ . ~/.profile
 
 $ wget https://github.com/mavlink/qgroundcontrol/releases/download/latest/QGroundControl.AppImage
 $ chmod +x QGroundControl.AppImage
-
-$ cd ~
-$ git clone https://github.com/ArduPilot/ardupilot_gazebo.git
-$ cd ardupilot_gazebo
-$ mkdir build && cd build
-$ cmake .. -DCMAKE_BUILD_TYPE=Release
-$ make -j$(nproc)
-$ sudo make install
-
-
-$ chmod +x setup_simulations_env.sh && ./setup_simulations_env.sh
-$ python -m venv .venv
-$ source .venv/bin/activate
-$ pip install -r requirements.txt
-$ cd "custom behavior"
-$ python <filename>.py
 ```
 
 To run simulation with gazebo (more complete physical engine) run this:
@@ -60,6 +44,26 @@ $ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkg
 $ echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] https://packages.osrfoundation.org/gazebo/ubuntu-prerelease $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/gazebo-prerelease.list > /dev/null
 $ sudo apt-get update
 $ sudo apt-get install gz-jetty
+
+$ cd ~
+$ git clone https://github.com/ArduPilot/ardupilot_gazebo.git
+$ cd ardupilot_gazebo
+$ mkdir build && cd build
+$ export GZ_VERSION="jetty"
+$ cmake .. -DCMAKE_BUILD_TYPE=Release
+$ make -j$(nproc)
+$ sudo make install
+
+
+$ chmod +x setup_simulations_env.sh && ./setup_simulations_env.sh
+$ python -m venv .venv
+$ source .venv/bin/activate
+$ pip install -r requirements.txt
+$ cd "custom behavior"
+$ python <filename>.py
+
+$ echo 'export GZ_SIM_SYSTEM_PLUGIN_PATH=$HOME/gz_ws/src/ardupilot_gazebo/build:${GZ_SIM_SYSTEM_PLUGIN_PATH}' >> ~/.bashrc
+$ echo 'export GZ_SIM_RESOURCE_PATH=$HOME/gz_ws/src/ardupilot_gazebo/models:$HOME/gz_ws/src/ardupilot_gazebo/worlds:${GZ_SIM_RESOURCE_PATH}' >> ~/.bashrc
 
 $ chmod +x run_sitl_gazebo.sh
 $ ./run_sitl_gazebo.sh

@@ -5,14 +5,14 @@
 
 # -------------------- ПЕРЕМЕННЫЕ --------------------
 # Путь к папке ArduPilot (где находится sim_vehicle.py)
-ARDUPILOT_PATH="$HOME/Workspace/copter/ardupilot"
+ARDUPILOT_PATH="$HOME/Workspace/Personal/drone/ardupilot"
 
 # Путь к QGroundControl AppImage
-QGC_PATH="$HOME/Downloads/QGroundControl-x86_64.AppImage"
+QGC_PATH="$HOME/Workspace/Personal/drone/QGroundControl-x86_64.AppImage"
 
 # Путь к виртуальной среде и requirements
-VENV_PATH="$HOME/Workspace/copter/drone/.venv"
-REQUIREMENTS_FILE="$HOME/Workspace/copter/drone/requirements.txt"
+VENV_PATH="$HOME/Workspace/Personal/drone/.venv"
+REQUIREMENTS_FILE="$HOME/Workspace/Personal/drone/requirements.txt"
 
 # MAVLink порты
 UDP_PORT="14551" # порт для MAVLink, изменён для избежания конфликта

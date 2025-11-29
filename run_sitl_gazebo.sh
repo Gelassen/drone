@@ -5,14 +5,14 @@
 
 # -------------------- ПЕРЕМЕННЫЕ --------------------
 # Путь к папке ArduPilot
-ARDUPILOT_PATH="$HOME/Workspace/copter/ardupilot"
+ARDUPILOT_PATH="$HOME/Workspace/Personal/drone/ardupilot"
 
 # Путь к Gazebo world или sdf файлу
-GAZEBO_MODEL_PATH="$HOME/Workspace/copter/ardupilot_gazebo/models/iris_runway.sdf"
+GAZEBO_MODEL_PATH="$HOME/Workspace/Personal/drone/ardupilot_gazebo/worlds/iris_runway.sdf"
 
 # Виртуальная среда
-VENV_PATH="$HOME/Workspace/copter/drone/.venv"
-REQUIREMENTS_FILE="$HOME/Workspace/copter/drone/requirements.txt"
+VENV_PATH="$HOME/Workspace/Personal/drone/.venv"
+REQUIREMENTS_FILE="$HOME/Workspace/Personal/drone/requirements.txt"
 
 # UDP порты связи SITL <-> Gazebo
 GAZEBO_OUT_PORT=9002  # Gazebo → SITL
@@ -30,7 +30,7 @@ else
     echo "Файл requirements.txt не найден: $REQUIREMENTS_FILE"
 fi
 
-export GZ_SIM_RESOURCE_PATH="$HOME/Workspace/copter/ardupilot_gazebo/models"
+export GZ_SIM_RESOURCE_PATH="$HOME/Workspace/Personal/drone/ardupilot_gazebo/models"
 
 # -------------------- ЗАПУСК SITL --------------------
 echo "Запуск ArduCopter SITL..."
@@ -47,7 +47,7 @@ sleep 5  # даём SITL время на инициализацию
 echo "Запуск Gazebo..."
 gnome-terminal -- bash -c "
 export GZ_SIM_RESOURCE_PATH=$GZ_SIM_RESOURCE_PATH &&
-gz sim -v4 -r /usr/local/share/ardupilot_gazebo/worlds/iris_runway.sdf
+gz sim -v4 -r  $GAZEBO_MODEL_PATH
 exec bash
 "
 
