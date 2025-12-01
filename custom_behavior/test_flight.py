@@ -6,7 +6,7 @@ from mavsdk.offboard import OffboardError, PositionNedYaw, VelocityNedYaw
 # -------------------- ФУНКЦИИ --------------------
 async def connect_drone():
     drone = System()
-    await drone.connect(system_address="udpin://127.0.0.1:14552")
+    await drone.connect(system_address="udpin://127.0.0.1:14550")
 
     print("Connecting to drone...")
     async for state in drone.core.connection_state():
