@@ -1,25 +1,29 @@
+import asyncio
 import cv2
 import numpy as np
 import apriltag
+from mavsdk import System
+from mavsdk.offboard import OffboardError, VelocityNedYaw
 
-# --- AprilTag детектор ---
-apriltag_detector = apriltag.Detector(apriltag.DetectorOptions(families="tag16h5"))
 
-# --- Камера / видео ---
-video_path = "../../assets/ar_test_video.MOV"
-cap = cv2.VideoCapture(video_path)
+# ----------------------------------
+# AprilTag detector (unchanged)
+# ----------------------------------
+apriltag_detector = apriltag.Detector(
+    apriltag.DetectorOptions(families="tag16h5")
+)
 
-# --- Параметры фильтрации квадратов ---
 MIN_AREA = 2000
 MAX_AREA = 15000
 ASPECT_RATIO_TOL = 0.2
 
+
 def find_squares(frame):
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    blur = cv2.GaussianBlur(gray, (5,5), 0)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
     edges = cv2.Canny(blur, 50, 150)
     contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    
+
     squares = []
     for cnt in contours:
         epsilon = 0.02 * cv2.arcLength(cnt, True)
@@ -32,45 +36,110 @@ def find_squares(frame):
                 squares.append((x, y, w, h))
     return squares
 
-def draw_axes(frame, corners, scale=20):
-    print("draw_axes is called")
-    """Рисуем локальные 2D-оси маркера по его углам"""
-    corners = corners.astype(int)
-    center = corners.mean(axis=0).astype(int)
-    
-    # ось X — от центра к первому углу
-    cv2.line(frame, tuple(center), tuple(corners[0]), (0,0,255), 2)
-    # ось Y — от центра к следующему углу (по часовой стрелке)
-    cv2.line(frame, tuple(center), tuple(corners[1]), (0,255,0), 2)
-    # ось Z — для наглядности вертикальная линия через центр (синяя)
-    cv2.line(frame, tuple(center), (center[0], center[1]-scale), (255,0,0), 2)
 
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
+# ----------------------------------
+# Controller parameters
+# ----------------------------------
+TAG_SIZE_M   = 0.07
+FOCAL_PX     = 700.0
+KZ           = 0.4
+VZ_LIM       = 0.3
 
-    squares = find_squares(frame)
-    print("Inference is running")
-    
-    for (x, y, w, h) in squares:
-        cv2.rectangle(frame, (x, y), (x+w, y+h), (0,255,255), 2)
-        roi = frame[y:y+h, x:x+w]
-        gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        detections = apriltag_detector.detect(gray_roi)
-        
-        print("detections length is ", len(detections))
-        for det in detections:
-            corners = det.corners + np.array([x, y])
-            cv2.polylines(frame, [corners.astype(int)], isClosed=True, color=(0,255,0), thickness=2)
-            cv2.putText(frame, f"ID: {det.tag_id}", tuple(corners[0].astype(int)), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,0,0), 2)
-            
-            draw_axes(frame, corners, scale=15)
+# reference: tag at 1.5 m should be approx this many pixels
+TAG_REF_PX   = 120  # adjust experimentally for your camera/altitude
 
-    cv2.imshow("Filtered Squares + AprilTags + Axes", frame)
-    
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
 
-cap.release()
-cv2.destroyAllWindows()
+def estimate_height_from_tag(px_size):
+    # simple stable estimator
+    if px_size <= 1:
+        return None
+    return TAG_REF_PX / px_size * 1.5   # reference altitude 1.5 m
+
+
+# ----------------------------------
+# Main controller loop
+# ----------------------------------
+async def main():
+    drone = System()
+    print("Connecting to udpin://127.0.0.1:14550...")
+    await drone.connect(system_address="udp://127.0.0.1:14550")
+
+    print("Waiting for drone...")
+    async for state in drone.core.connection_state():
+        if state.is_connected:
+            print("Drone connected!")
+            break
+
+    print("Arming…")
+    await drone.action.arm()
+
+    print("Takeoff to 1.5 m…")
+    await drone.action.takeoff()
+    await asyncio.sleep(5)
+
+    print("Starting offboard…")
+    try:
+        await drone.offboard.start()
+    except OffboardError as e:
+        print("Offboard start failed:", e)
+        return
+
+    print("Offboard started.")
+
+    cap = cv2.VideoCapture("../../assets/ar_test_video.MOV")
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            print("Video ended, landing…")
+            break
+
+        squares = find_squares(frame)
+        tag_px = None
+
+        for (x, y, w, h) in squares:
+            roi = frame[y:y+h, x:x+w]
+            gray_roi = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+            detections = apriltag_detector.detect(gray_roi)
+
+            if len(detections) == 1:
+                det = detections[0]
+                # bounding box size as scale proxy
+                tag_px = max(w, h)
+
+        # ----------------------------------
+        # HEIGHT CONTROL
+        # ----------------------------------
+        if tag_px is None:
+            vz = 0    # freeze height if no tag
+            print("No tag → vz=0")
+        else:
+            h_est = estimate_height_from_tag(tag_px)
+            if h_est is None:
+                vz = 0
+            else:
+                # maintain 1.5 m target
+                dz = h_est - 1.5
+                vz = np.clip(KZ * dz, -VZ_LIM, VZ_LIM)
+                print(f"Tag px={tag_px}, h_est={h_est:.2f}, vz={vz:.2f}")
+
+        # ----------------------------------
+        # Send velocity to robot
+        # ----------------------------------
+        try:
+            await drone.offboard.set_velocity_ned(
+                VelocityNedYaw(vx=0.0, vy=0.0, vz=-vz, yaw=0.0)
+            )
+        except OffboardError as e:
+            print("Offboard error:", e)
+            break
+
+        await asyncio.sleep(0.05)
+
+    await drone.action.land()
+    await asyncio.sleep(3)
+    print("Done.")
+
+
+if __name__ == "__main__":
+    asyncio.run(main())

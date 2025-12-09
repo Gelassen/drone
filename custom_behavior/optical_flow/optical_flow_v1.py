@@ -1,4 +1,14 @@
+#!/usr/bin/env python3
+"""
+Refactored AprilTag optical controller for testable design.
+
+- Detector and MAV interface injected
+- Pure computation isolated for unit testing
+- Logging centralized via IS_DEBUG
+"""
+
 import asyncio
+import os
 import time
 import cv2
 import numpy as np
@@ -169,6 +179,106 @@ async def main():
     )
     await controller.run(runtime_sec=120.0)
 
+    def _pose_height(self, pose_t):
+        try:
+            return abs(float(pose_t[2, 0]))
+        except Exception:
+            try:
+                return abs(float(pose_t[2]))
+            except Exception:
+                return None
 
+    def _pose_cos_z(self, pose_R):
+        try:
+            normal = pose_R[:, 2]
+            return abs(float(normal[2]))
+        except Exception:
+            return None
+
+    def _height_from_px(self, px_size, cos_theta):
+        if px_size is None:
+            return None
+        if cos_theta is None:
+            cos_theta = 1.0
+        if cos_theta <= 0.01:
+            return None
+        corrected = px_size * cos_theta
+        if corrected < 1.0:
+            return None
+        return float((self.focal_length_px * self.tag_size_m) / corrected)
+
+    def _median_height(self, value):
+        if value is None:
+            return None
+        self.height_hist.append(value)
+        return float(np.median(self.height_hist))
+
+    def _estimate_height(self, tag):
+        if tag is None:
+            return None, None, None
+        raw_px = self._px_size_from_corners(tag.corners)
+        self.filtered_px = self._lowpass(self.filtered_px, raw_px, alpha=self.filter_alpha)
+        cos_z = self._pose_cos_z(tag.pose_R)
+        if cos_z is None or cos_z < self.angle_cos_threshold:
+            self.log(f"Tag too angled (cos_z={cos_z}) -> skip height")
+            return None, cos_z, raw_px
+        h_pose = self._pose_height(tag.pose_t)
+        h_px = self._height_from_px(self.filtered_px, cos_z)
+        height = h_pose if h_pose is not None and 0.02 < h_pose < 50.0 else h_px
+        if height is not None:
+            height_med = self._median_height(height)
+            self.filtered_height = self._lowpass(self.filtered_height, height_med, alpha=0.4)
+            return self.filtered_height, cos_z, raw_px
+        return None, cos_z, raw_px
+
+    def _compute_velocity_commands(self, tag, height_used, target_alt_m):
+        vx_cmd = vy_cmd = vz_cmd = 0.0
+        if tag is None or height_used is None:
+            return vx_cmd, vy_cmd, vz_cmd
+        # pixel center
+        cx = float(np.mean(tag.corners[:, 0]))
+        cy = float(np.mean(tag.corners[:, 1]))
+        img_cx = np.mean([tag.corners[:, 0].min(), tag.corners[:, 0].max()])
+        img_cy = np.mean([tag.corners[:, 1].min(), tag.corners[:, 1].max()])
+        dx_px = cx - img_cx
+        dy_px = cy - img_cy
+        # convert pixel errors -> meters using estimated height
+        err_x_m = (dx_px * height_used) / self.focal_length_px
+        err_y_m = (dy_px * height_used) / self.focal_length_px
+        # NED mapping
+        vx_raw = -self.Ky * err_y_m
+        vy_raw = -self.Kx * err_x_m
+        vz_raw = self.Kz * (height_used - target_alt_m)
+        vx_cmd = float(np.clip(vx_raw, -self.vx_limit, self.vx_limit))
+        vy_cmd = float(np.clip(vy_raw, -self.vy_limit, self.vy_limit))
+        vz_cmd = float(np.clip(vz_raw, -self.vz_limit, self.vz_limit))
+        # filtering
+        self.filtered_vx = self._lowpass(self.filtered_vx, vx_cmd, alpha=0.25)
+        self.filtered_vy = self._lowpass(self.filtered_vy, vy_cmd, alpha=0.25)
+        self.filtered_vz = self._lowpass(self.filtered_vz, vz_cmd, alpha=0.25)
+        return self.filtered_vx, self.filtered_vy, self.filtered_vz
+
+    # ---------- detection ----------
+    def _detect_tags(self, gray_frame):
+        camera_params = [
+            self.focal_length_px,
+            self.focal_length_px,
+            gray_frame.shape[1] / 2.0,
+            gray_frame.shape[0] / 2.0,
+        ]
+        tags = self.detector.detect(gray_frame, camera_params=camera_params, tag_size=self.tag_size_m)
+        self.log(f"Detected {len(tags)} tags")
+        return tags
+
+    def _select_best_tag(self, tags):
+        if not tags:
+            return None
+        return max(tags, key=lambda t: self._px_size_from_corners(t.corners))
+
+    # ---------- send / MAV commands ----------
+    async def _send_velocity(self, vx, vy, vz):
+        await self.hardware.send_velocity(vx, vy, vz)
+
+# -------------------- simple usage example --------------------
 if __name__ == "__main__":
     asyncio.run(main())
