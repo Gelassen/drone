@@ -185,4 +185,4 @@ class DroneHardware(HardwareInterface):
             print("[MAVSDKHardware] send_velocity failed:", e)
             result = False
             
-        return True
+        return result
