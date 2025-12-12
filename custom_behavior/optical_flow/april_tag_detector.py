@@ -15,6 +15,9 @@ class AprilTagDetector:
         self.tag_size_m=tag_size_m
         self.focal_length_px=focal_length_px
 
+    def get_focal_length_px(self):
+        return self.focal_length_px
+
     def find_squares(self, frame, min_area=2000, max_area=15000, aspect_tol=0.3):
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         blur = cv2.GaussianBlur(gray, (5, 5), 0)
