@@ -8,6 +8,8 @@ import apriltag
 from mavsdk import System
 from mavsdk.offboard import OffboardError, VelocityNedYaw
 
+from april_tag_detector import AprilTagDetector
+
 
 class AprilTagOpticalController:
     def __init__(self,
@@ -45,8 +47,9 @@ class AprilTagOpticalController:
         self.drone = System() if not disable_mav else None
 
         # apriltag detector
-        self.at_options = apriltag.DetectorOptions(families=tag_family)
-        self.apriltag_detector = apriltag.Detector(self.at_options)
+        # self.at_options = apriltag.DetectorOptions(families=tag_family)
+        # self.apriltag_detector = apriltag.Detector(self.at_options)
+        self.apriltag_detector = AprilTagDetector()
 
         # video + executor
         self.cap = None
@@ -143,31 +146,34 @@ class AprilTagOpticalController:
 
     # -------------------- Detection --------------------
     def find_squares(self, frame, min_area=2000, max_area=15000, aspect_tol=0.3):
-        gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        edges = cv2.Canny(blur, 50, 150)
-        contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        # blur = cv2.GaussianBlur(gray, (5, 5), 0)
+        # edges = cv2.Canny(blur, 50, 150)
+        # contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        squares = []
-        for cnt in contours:
-            epsilon = 0.02 * cv2.arcLength(cnt, True)
-            approx = cv2.approxPolyDP(cnt, epsilon, True)
-            if len(approx) == 4 and cv2.isContourConvex(approx):
-                x, y, w, h = cv2.boundingRect(approx)
-                area = w * h
-                ratio = w / float(h) if h else 0
-                if area >= min_area and area <= max_area and abs(ratio - 1) < aspect_tol:
-                    squares.append((x, y, w, h))
-        return squares
+        # squares = []
+        # for cnt in contours:
+        #     epsilon = 0.02 * cv2.arcLength(cnt, True)
+        #     approx = cv2.approxPolyDP(cnt, epsilon, True)
+        #     if len(approx) == 4 and cv2.isContourConvex(approx):
+        #         x, y, w, h = cv2.boundingRect(approx)
+        #         area = w * h
+        #         ratio = w / float(h) if h else 0
+        #         if area >= min_area and area <= max_area and abs(ratio - 1) < aspect_tol:
+        #             squares.append((x, y, w, h))
+        # return squares
+        return self.apriltag_detector.find_squares(frame, min_area, max_area, aspect_tol)
 
     def detect_tags_in_roi(self, roi):
-        gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        return self.apriltag_detector.detect(gray)
+        # gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
+        # return self.apriltag_detector.detect(gray)
+        return self.apriltag_detector.detect_tags_in_roi(roi)
 
     def estimate_distance_from_px(self, px_size):
-        if px_size <= 0:
-            return None
-        return (self.focal_length_px * self.tag_size_m) / px_size
+        # if px_size <= 0:
+            # return None
+        # return (self.focal_length_px * self.tag_size_m) / px_size
+        return self.apriltag_detector.estimate_distance_from_px(px_size)
 
     # -------------------- Control --------------------
     def compute_velocity_command(self, cx, cy, px_size, target_alt_m):
