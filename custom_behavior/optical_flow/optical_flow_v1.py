@@ -1,16 +1,19 @@
 import asyncio
 import time
-from concurrent.futures import ThreadPoolExecutor
-
 import cv2
 import numpy as np
 import apriltag
+
 from mavsdk import System
 from mavsdk.offboard import OffboardError, VelocityNedYaw
+from concurrent.futures import ThreadPoolExecutor
+from dataclasses import dataclass
 
 from april_tag_detector import AprilTagDetector
 from hardware_interface import HardwareInterface
 from drone_hardware import DroneHardware
+
+
 
 class AprilTagOpticalController:
     def __init__(self,
@@ -141,157 +144,117 @@ class AprilTagOpticalController:
 
         return isSuccess
 
-    # -------------------- Main loop --------------------
-    async def run(self, runtime_sec=120.0, target_alt_m=None):
-        if target_alt_m is None:
-            target_alt_m = self.takeoff_alt_m
-
+    async def _setup(self, target_alt_m):
         self.open_video()
         await self.connect()
-        if await self.hardware_interface.can_arm_with_backoff():
-            await self.arm_and_takeoff()
-            await self.start_offboard()
-        else:
-            raise Exception("Failed to arm. Check console for details")
+
+        if not await self.hardware_interface.can_arm_with_backoff():
+            raise RuntimeError("Failed to arm")
+
+        await self.arm_and_takeoff()
+        await self.start_offboard()
+
+        self.last_send = time.time()
+    
+    async def _teardown(self):
+        print("Stopping loop, landing/cleanup...")
+
+        if self.hardware_interface.is_connected():
+            try:
+                await self.stop_offboard()
+            except Exception:
+                pass
+            try:
+                await self.hardware_interface.land()
+            except Exception:
+                pass
+
+        if self.cap:
+            self.cap.release()
+        cv2.destroyAllWindows()
+
+    def _should_continue(self, start_time, runtime_sec):
+        if not self._run_loop:
+            return False
+        if time.time() - start_time >= runtime_sec:
+            return False
+        return True
+
+    async def _run_iteration(self, target_alt_m):
+        frame = await self._get_frame()
+        if frame is None:
+            await self._handle_frame_loss()
+            return
+
+        detection = self.apriltag_detector.detect_best_target(frame)
+        await self._control_step(detection, target_alt_m)
+
+        self._draw_debug(frame, detection)
+        self._display_frame(frame)
+
+        await asyncio.sleep(0.001)
+
+    async def _get_frame(self):
+        ret, frame = await self.read_frame_async()
+        return frame if ret and frame is not None else None
+
+
+    async def _handle_frame_loss(self):
+        if time.time() - self.last_send > 0.2:
+            await self.send_velocity_safe(0.0, 0.0, 0.0)
+            if self.hardware_interface.is_connected():
+                try:
+                    await self.hardware_interface.land()
+                except Exception as e:
+                    print(f"Warning: land() failed: {e}")
+        await asyncio.sleep(0.02)
+
+    async def _control_step(self, detection, target_alt_m):
+        if detection is None:
+            await self._hover_if_needed()
+            return
+
+        vx, vy, vz, _ = self.compute_velocity_command(
+            detection.cx,
+            detection.cy,
+            detection.px_size,
+            target_alt_m
+        )
+
+        await self.send_velocity_safe(vx, vy, vz)
+
+    async def _hover_if_needed(self):
+        if time.time() - self.last_send > 0.2:
+            await self.send_velocity_safe(0.0, 0.0, 0.0)
+
+
+    def _draw_debug(self, frame, detection):
+        if detection:
+            cv2.circle(frame, (int(detection.cx), int(detection.cy)), 6, (0, 0, 255), -1)
+
+    def _display_frame(self, frame):
+        try:
+            cv2.imshow("AprilTag Controller", frame)
+            if cv2.waitKey(1) & 0xFF == ord("q"):
+                self._run_loop = False
+        except Exception:
+            pass
+
+
+    # -------------------- Main loop --------------------
+    async def run(self, runtime_sec=120.0, target_alt_m=None):
+        target_alt_m = target_alt_m or self.takeoff_alt_m
+
+        await self._setup(target_alt_m)
 
         self._run_loop = True
         start_time = time.time()
-        lost_frames = 0
 
         try:
-            while self._run_loop and (time.time() - start_time) < runtime_sec:
-                ret, frame = await self.read_frame_async()
-                if not ret or frame is None:
-                    lost_frames += 1
-                    # if video is lost for multiple frames, attempt safe landing when connected
-                    if lost_frames > 3:
-                        print("VIDEO LOST → performing safe hover/land")
-                        # send immediate zero velocity and land if connected
-                        await self.send_velocity_safe(0.0, 0.0, 0.0)
-                        if self.hardware_interface.is_connected():
-                            try:
-                                await self.hardware_interface.land()
-                            except Exception as e:
-                                print(f"Warning: land() failed: {e}")
-                        break
-                    await asyncio.sleep(0.02)
-                    continue
-
-                # reset lost frames counter once we have a frame
-                lost_frames = 0
-
-                # --- detection ---
-                squares = self.find_squares(frame)
-                best_cx = best_cy = best_px_size = None
-                best_tag = None
-
-                # try to detect real tags first
-                for (x, y, w, h) in squares:
-                    # defensive cropping: ensure ROI in frame bounds
-                    x0 = max(0, x)
-                    y0 = max(0, y)
-                    x1 = min(self.frame_w, x + w)
-                    y1 = min(self.frame_h, y + h)
-                    if x1 <= x0 or y1 <= y0:
-                        continue
-                    roi = frame[y0:y1, x0:x1]
-
-                    try:
-                        tags = self.detect_tags_in_roi(roi)
-                    except Exception as e:
-                        # detector occasionally throws; skip ROI
-                        print(f"Warning: detect_tags_in_roi failed: {e}")
-                        tags = []
-
-                    if not tags:
-                        continue
-
-                    for t in tags:
-                        corners = np.array(t.corners, dtype=float)
-                        side1 = float(np.linalg.norm(corners[0] - corners[1]))
-                        side2 = float(np.linalg.norm(corners[1] - corners[2]))
-                        side = 0.5 * (side1 + side2)
-
-                        cx = float(corners[:, 0].mean() + x0)
-                        cy = float(corners[:, 1].mean() + y0)
-
-                        # safe comparison with None
-                        if best_px_size is None or side > best_px_size:
-                            best_tag = t
-                            best_px_size = side
-                            best_cx = cx
-                            best_cy = cy
-
-                # fallback: use largest square candidate if no real tag
-                if best_tag is None and squares:
-                    # select largest by area
-                    x, y, w, h = max(squares, key=lambda s: s[2] * s[3])
-                    best_cx = x + w / 2.0
-                    best_cy = y + h / 2.0
-                    best_px_size = float(max(w, h))
-
-                # --- compute & send velocity ---
-                if best_cx is not None:
-                    vx, vy, vz, est_dist = self.compute_velocity_command(best_cx, best_cy, best_px_size, target_alt_m)
-                    # send only if connected; otherwise we just draw/debug
-                    await self.send_velocity_safe(vx, vy, vz, 0.0)
-
-                    # draw debug overlays
-                    try:
-                        cv2.circle(frame, (int(best_cx), int(best_cy)), 6, (0, 0, 255), -1)
-                        cv2.putText(frame, f"vx:{vx:.2f} vy:{vy:.2f} vz:{vz:.2f} dist:{est_dist:.2f}",
-                                    (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 1)
-                    except Exception:
-                        pass
-                else:
-                    # NO candidate: hover/stop (behavior A)
-                    # ensure we periodically send zero velocities so autopilot doesn't keep old command
-                    if time.time() - self.last_send > 0.2:
-                        await self.send_velocity_safe(0.0, 0.0, 0.0)
-
-                # draw candidate squares
-                for x, y, w, h in squares:
-                    try:
-                        cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 255, 255), 1)
-                    except Exception:
-                        pass
-
-                # show frame (if display available)
-                try:
-                    cv2.imshow("AprilTag Optical Controller", frame)
-                    if cv2.waitKey(1) & 0xFF == ord("q"):
-                        print("User requested exit (q).")
-                        break
-                except Exception:
-                    # headless or imshow error: ignore
-                    pass
-
-                # small sleep to yield control (keeps loop responsive)
-                await asyncio.sleep(0.001)
-
+            while self._should_continue(start_time, runtime_sec):
+                await self._run_iteration(target_alt_m)
         finally:
-            print("Stopping loop, landing/cleanup...")
-            # stop offboard and land if connected
-            if self.hardware_interface.is_connected():
-                try:
-                    await self.stop_offboard()
-                except Exception:
-                    pass
-                try:
-                    await self.drone.action.land()
-                except Exception:
-                    pass
-
-            # cleanup video + executor
-            try:
-                if self.cap is not None:
-                    self.cap.release()
-            except Exception:
-                pass
-            try:
-                cv2.destroyAllWindows()
-            except Exception:
-                pass
+            await self._teardown()
 
     async def shutdown(self):
         self._run_loop = False
@@ -310,15 +273,10 @@ class AprilTagOpticalController:
             pass
 
 
-# -------------------- Example usage --------------------
 async def main():
     controller = AprilTagOpticalController(
         connection_url="udpin://127.0.0.1:14550",
         video_source="../../assets/ar_test_video.MOV",
-
-        # tag_family="tag16h5",
-        # tag_size_m=0.07,
-        # focal_length_px=700.0,
 
         takeoff_alt_m=1.5,
 
@@ -331,7 +289,6 @@ async def main():
         Kz=0.4,
 
         run_in_thread_workers=2,
-        # disable_mav=False
     )
 
     await controller.run(runtime_sec=120.0, target_alt_m=1.5)

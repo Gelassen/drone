@@ -1,5 +1,8 @@
 import cv2
 import apriltag
+import numpy as np
+
+from target_detection import TargetDetection
 
 class AprilTagDetector:
 
@@ -44,3 +47,46 @@ class AprilTagDetector:
         if px_size <= 0:
             return None
         return (self.focal_length_px * self.tag_size_m) / px_size
+    
+    def detect_best_target(self, frame) -> TargetDetection | None:
+        squares = self.find_squares(frame)
+
+        best = self.detect_apriltag(frame, squares)
+        if best:
+            return best
+
+        return self.fallback_square(squares)
+    
+    def detect_apriltag(self, frame, squares):
+        best = None
+
+        for (x, y, w, h) in squares:
+            roi = frame[y:y+h, x:x+w]
+            tags = self.detect_tags_in_roi(roi)
+
+            for t in tags:
+                corners = np.array(t.corners)
+                side = np.mean([
+                    np.linalg.norm(corners[0] - corners[1]),
+                    np.linalg.norm(corners[1] - corners[2])
+                ])
+                cx = corners[:, 0].mean() + x
+                cy = corners[:, 1].mean() + y
+
+                if not best or side > best.px_size:
+                    best = TargetDetection(cx, cy, side, "tag")
+
+        return best
+
+    def fallback_square(self, squares):
+        if not squares:
+            return None
+
+        x, y, w, h = max(squares, key=lambda s: s[2] * s[3])
+        return TargetDetection(
+            cx=x + w / 2,
+            cy=y + h / 2,
+            px_size=max(w, h),
+            source="square"
+        )
+
