@@ -18,9 +18,7 @@ class AprilTagOpticalController:
                  video_source=0,
                  apriltag_detector=AprilTagDetector(),
                  hardware_interface=DroneHardware(),
-                #  tag_family="tag16h5",
-                #  tag_size_m=0.05,
-                #  focal_length_px=600.0,
+
                  takeoff_alt_m=1.5,
                  vx_limit=0.5,
                  vy_limit=0.5,
@@ -29,12 +27,10 @@ class AprilTagOpticalController:
                  Ky=0.4,
                  Kz=0.4,
                  run_in_thread_workers=2,
-                #  disable_mav=False
+
                  ):
         self.connection_url = connection_url
         self.video_source = video_source
-        # self.tag_size_m = tag_size_m
-        # self.focal_length_px = focal_length_px
         self.takeoff_alt_m = takeoff_alt_m
 
         self.vx_limit = float(vx_limit)
@@ -44,15 +40,6 @@ class AprilTagOpticalController:
         self.Ky = float(Ky)
         self.Kz = float(Kz)
 
-        # self._connected = False
-        # self.disable_mav = disable_mav
-
-        # mavsdk system (may be None in disable_mav mode)
-        # self.drone = System() if not disable_mav else None
-
-        # apriltag detector
-        # self.at_options = apriltag.DetectorOptions(families=tag_family)
-        # self.apriltag_detector = apriltag.Detector(self.at_options)
         self.apriltag_detector = apriltag_detector
         self.hardware_interface = hardware_interface
 
@@ -71,72 +58,15 @@ class AprilTagOpticalController:
     # -------------------- MAV helpers --------------------
     async def connect(self):
         await self.hardware_interface.connect()
-        # if self.disable_mav:
-        #     print("MAV disabled, skipping connect")
-        #     return
-        # print("Connecting to drone...")
-        # try:
-        #     await self.drone.connect(system_address=self.connection_url)
-        # except Exception as e:
-        #     # connect may raise if bad URL; continue but mark disconnected
-        #     print(f"Warning: drone.connect() exception: {e}")
-        #     self._connected = False
-        #     return
-
-        # try:
-        #     async for state in self.drone.core.connection_state():
-        #         if state.is_connected:
-        #             print("Drone discovered!")
-        #             self._connected = True
-        #             break
-        # except Exception as e:
-        #     print(f"Warning: connection_state() exception: {e}")
-        #     self._connected = False
 
     async def arm_and_takeoff(self):
         await self.hardware_interface.arm_and_takeoff()
-        # if self.disable_mav or not self._connected:
-        #     print("Skipping arm/takeoff (disabled or not connected)")
-        #     return
-        # print("Arming...")
-        # try:
-        #     await self.drone.action.arm()
-        #     print(f"Taking off to {self.takeoff_alt_m} m...")
-        #     await self.drone.action.takeoff()
-        #     async for pos in self.drone.telemetry.position():
-        #         if pos.relative_altitude_m >= self.takeoff_alt_m * 0.95:
-        #             print("Reached target altitude")
-        #             break
-        #         await asyncio.sleep(0.2)
-        # except Exception as e:
-        #     print(f"Warning: arm/takeoff failed: {e}")
-        #     # don't raise — continue in safe mode
-        #     self._connected = False
 
     async def start_offboard(self):
         await self.hardware_interface.start_offboard()
-        # if self.disable_mav or not self._connected:
-        #     return
-        # try:
-        #     await self.drone.offboard.set_velocity_ned(VelocityNedYaw(0, 0, 0, 0))
-        #     await self.drone.offboard.start()
-        #     print("Offboard started")
-        # except OffboardError as e:
-        #     print(f"Failed to start Offboard: {e._result.result}")
-        #     raise
-        # except Exception as e:
-        #     print(f"Warning: start_offboard failed: {e}")
-        #     self._connected = False
 
     async def stop_offboard(self):
         await self.hardware_interface.stop_offboard()
-        # if self.disable_mav or not self._connected:
-        #     return
-        # try:
-        #     await self.drone.offboard.stop()
-        #     print("Offboard stopped")
-        # except Exception as e:
-        #     print(f"Warning: stop_offboard failed: {e}")
 
     async def land(self):
         await self.hardware_interface.land()
@@ -161,33 +91,12 @@ class AprilTagOpticalController:
 
     # -------------------- Detection --------------------
     def find_squares(self, frame, min_area=2000, max_area=15000, aspect_tol=0.3):
-        # gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        # blur = cv2.GaussianBlur(gray, (5, 5), 0)
-        # edges = cv2.Canny(blur, 50, 150)
-        # contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        # squares = []
-        # for cnt in contours:
-        #     epsilon = 0.02 * cv2.arcLength(cnt, True)
-        #     approx = cv2.approxPolyDP(cnt, epsilon, True)
-        #     if len(approx) == 4 and cv2.isContourConvex(approx):
-        #         x, y, w, h = cv2.boundingRect(approx)
-        #         area = w * h
-        #         ratio = w / float(h) if h else 0
-        #         if area >= min_area and area <= max_area and abs(ratio - 1) < aspect_tol:
-        #             squares.append((x, y, w, h))
-        # return squares
         return self.apriltag_detector.find_squares(frame, min_area, max_area, aspect_tol)
 
     def detect_tags_in_roi(self, roi):
-        # gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
-        # return self.apriltag_detector.detect(gray)
         return self.apriltag_detector.detect_tags_in_roi(roi)
 
     def estimate_distance_from_px(self, px_size):
-        # if px_size <= 0:
-            # return None
-        # return (self.focal_length_px * self.tag_size_m) / px_size
         return self.apriltag_detector.estimate_distance_from_px(px_size)
 
     # -------------------- Control --------------------
@@ -226,22 +135,11 @@ class AprilTagOpticalController:
 
     # Helper to send velocity safely (checks connection + catches)
     async def send_velocity_safe(self, vx, vy, vz, yaw=0.0):
-        # """
-        # Send velocity if connected; otherwise no-op.
-        # Keeps last_send updated only on success.
-        # """
-        # if not self._connected or self.disable_mav:
-        #     return False
-        # try:
-        #     await self.drone.offboard.set_velocity_ned(VelocityNedYaw(float(vx), float(vy), float(vz), float(yaw)))
-        #     self.last_send = time.time()
-        #     return True
-        # except Exception as e:
-        #     print(f"Warning: set_velocity_ned failed: {e}")
-        #     return False
         isSuccess = await self.hardware_interface.send_velocity(float(vx), float(vy), float(vz), float(yaw))
         if isSuccess:
             self.last_send = time.time()
+
+        return isSuccess
 
     # -------------------- Main loop --------------------
     async def run(self, runtime_sec=120.0, target_alt_m=None):
@@ -250,8 +148,11 @@ class AprilTagOpticalController:
 
         self.open_video()
         await self.connect()
-        await self.arm_and_takeoff()
-        await self.start_offboard()
+        if await self.hardware_interface.can_arm_with_backoff():
+            await self.arm_and_takeoff()
+            await self.start_offboard()
+        else:
+            raise Exception("Failed to arm. Check console for details")
 
         self._run_loop = True
         start_time = time.time()
@@ -269,7 +170,7 @@ class AprilTagOpticalController:
                         await self.send_velocity_safe(0.0, 0.0, 0.0)
                         if self.hardware_interface.is_connected():
                             try:
-                                await self.hardware_interface.action.land()
+                                await self.hardware_interface.land()
                             except Exception as e:
                                 print(f"Warning: land() failed: {e}")
                         break

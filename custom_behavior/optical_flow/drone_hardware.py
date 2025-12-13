@@ -50,6 +50,67 @@ class DroneHardware(HardwareInterface):
             print(f"Warning: connection_state() exception: {e}")
             self._connected = False
     
+    async def can_arm(self) -> bool:
+        async for health in self.drone.telemetry.health():
+            return (
+                health.is_gyrometer_calibration_ok and
+                health.is_accelerometer_calibration_ok and
+                health.is_magnetometer_calibration_ok and
+                health.is_global_position_ok and
+                health.is_home_position_ok
+            )
+    
+    async def can_arm_with_backoff(
+        self,
+        *,
+        max_attempts: int = 3,
+        base_delay: float = 0.5,     # начальная задержка (сек)
+        max_delay: float = 5.0,      # потолок задержки
+        verbose: bool = True,
+    ) -> bool:
+        """
+        Проверяет возможность ARM с экспоненциальной задержкой.
+
+        delay = min(base_delay * 2**attempt, max_delay)
+        """
+
+        attempt = 0
+
+        async for health in self.drone.telemetry.health():
+
+            ok = (
+                health.is_gyrometer_calibration_ok and
+                health.is_accelerometer_calibration_ok and
+                health.is_magnetometer_calibration_ok and
+                health.is_global_position_ok and
+                health.is_home_position_ok
+            )
+
+            if ok:
+                if verbose:
+                    print(f"[ARM CHECK] OK on attempt {attempt}")
+                return True
+
+            if attempt >= max_attempts:
+                if verbose:
+                    print("[ARM CHECK] FAILED: max attempts reached")
+                return False
+
+            delay = min(base_delay * (2 ** attempt), max_delay)
+
+            if verbose:
+                print(
+                    f"[ARM CHECK] attempt={attempt} → retry in {delay:.2f}s | "
+                    f"gyro={health.is_gyrometer_calibration_ok} "
+                    f"accel={health.is_accelerometer_calibration_ok} "
+                    f"mag={health.is_magnetometer_calibration_ok} "
+                    f"gps={health.is_global_position_ok} "
+                    f"home={health.is_home_position_ok}"
+                )
+
+            attempt += 1
+            await asyncio.sleep(delay)
+
     async def arm_and_takeoff(self, target_alt_m: float = 1.5):
         # self.log.append(f"takeoff {target_alt_m}")
         if self.disable_mav or not self._connected:

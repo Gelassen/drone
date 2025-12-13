@@ -13,6 +13,14 @@ class HardwareInterface(ABC):
         pass
 
     @abstractmethod
+    async def can_arm(self) -> bool:
+        pass
+
+    @abstractmethod
+    async def can_arm_with_backoff(self) -> bool:
+        pass
+
+    @abstractmethod
     async def arm_and_takeoff(self, target_alt_m: float):
         pass
 
