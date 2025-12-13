@@ -13,8 +13,6 @@ from april_tag_detector import AprilTagDetector
 from hardware_interface import HardwareInterface
 from drone_hardware import DroneHardware
 
-
-
 class AprilTagOpticalController:
     def __init__(self,
                  connection_url="udpin://127.0.0.1:14550",
@@ -77,7 +75,7 @@ class AprilTagOpticalController:
     async def send_velocity(self):
         await self.hardware_interface.send_velocity()
 
-    # -------------------- Video helpers --------------------
+    # video helpers (encapsulating in different class has overhead on managing threads contexts!)
     def open_video(self):
         self.cap = cv2.VideoCapture(self.video_source)
         if not self.cap.isOpened():
@@ -92,16 +90,10 @@ class AprilTagOpticalController:
         ret, frame = await loop.run_in_executor(self.executor, lambda: self.cap.read())
         return ret, frame
 
-    # -------------------- Detection --------------------
-    def find_squares(self, frame, min_area=2000, max_area=15000, aspect_tol=0.3):
-        return self.apriltag_detector.find_squares(frame, min_area, max_area, aspect_tol)
-
-    def detect_tags_in_roi(self, roi):
-        return self.apriltag_detector.detect_tags_in_roi(roi)
-
-    def estimate_distance_from_px(self, px_size):
-        return self.apriltag_detector.estimate_distance_from_px(px_size)
-
+    async def get_frame(self):
+        ret, frame = await self.read_frame_async()
+        return frame if ret and frame is not None else None
+    
     # -------------------- Control --------------------
     def compute_velocity_command(self, cx, cy, px_size, target_alt_m):
         """
@@ -116,7 +108,7 @@ class AprilTagOpticalController:
         dy = cy - center_y
 
         px_size = max(float(px_size), 1.0)
-        dist = self.estimate_distance_from_px(px_size)
+        dist = self.apriltag_detector.estimate_distance_from_px(px_size)
         if dist is None:
             dist = target_alt_m
 
@@ -164,8 +156,14 @@ class AprilTagOpticalController:
                 await self.stop_offboard()
             except Exception:
                 pass
+
             try:
                 await self.hardware_interface.land()
+            except Exception:
+                pass
+
+            try:
+                self.executor.shutdown(wait=False)
             except Exception:
                 pass
 
@@ -181,7 +179,7 @@ class AprilTagOpticalController:
         return True
 
     async def _run_iteration(self, target_alt_m):
-        frame = await self._get_frame()
+        frame = await self.get_frame()
         if frame is None:
             await self._handle_frame_loss()
             return
@@ -193,11 +191,6 @@ class AprilTagOpticalController:
         self._display_frame(frame)
 
         await asyncio.sleep(0.001)
-
-    async def _get_frame(self):
-        ret, frame = await self.read_frame_async()
-        return frame if ret and frame is not None else None
-
 
     async def _handle_frame_loss(self):
         if time.time() - self.last_send > 0.2:
@@ -227,7 +220,6 @@ class AprilTagOpticalController:
         if time.time() - self.last_send > 0.2:
             await self.send_velocity_safe(0.0, 0.0, 0.0)
 
-
     def _draw_debug(self, frame, detection):
         if detection:
             cv2.circle(frame, (int(detection.cx), int(detection.cy)), 6, (0, 0, 255), -1)
@@ -255,23 +247,6 @@ class AprilTagOpticalController:
                 await self._run_iteration(target_alt_m)
         finally:
             await self._teardown()
-
-    async def shutdown(self):
-        self._run_loop = False
-        try:
-            self.executor.shutdown(wait=False)
-        except Exception:
-            pass
-        if self.cap is not None:
-            try:
-                self.cap.release()
-            except Exception:
-                pass
-        try:
-            cv2.destroyAllWindows()
-        except Exception:
-            pass
-
 
 async def main():
     controller = AprilTagOpticalController(
