@@ -2,7 +2,7 @@ import cv2
 import apriltag
 import numpy as np
 
-from target_detection import TargetDetection
+from custom_behavior.optical_flow.target_detection import TargetDetection
 
 class AprilTagDetector:
 
