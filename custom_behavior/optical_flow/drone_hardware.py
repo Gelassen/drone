@@ -6,7 +6,7 @@ from mavsdk.offboard import (
     VelocityNedYaw
 )
 
-from hardware_interface import HardwareInterface
+from custom_behavior.optical_flow.hardware_interface import HardwareInterface
 
 
 class DroneHardware(HardwareInterface):

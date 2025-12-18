@@ -1,12 +1,18 @@
-import numpy as np
-import pytest
-from unittest.mock import Mock
 
-from custom_behavior.optical_flow.optical_velocity_controller import OpticalVelocityController
+class FakeDetector:
+    def __init__(self, detections):
+        self.detections = detections
+        self.idx = 0
 
+    def detect_best_target(self, frame):
+        if self.idx < len(self.detections):
+            d = self.detections[self.idx]
+            self.idx += 1
+            return d
+        return None
 
-class FakeDetection:
-    def __init__(self, cx, cy, px_size):
-        self.cx = cx
-        self.cy = cy
-        self.px_size = px_size
+    def estimate_distance_from_px(self, px):
+        return 1.5
+
+    def get_focal_length_px(self):
+        return 500

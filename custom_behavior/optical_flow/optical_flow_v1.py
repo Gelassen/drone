@@ -6,13 +6,14 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-from april_tag_detector import AprilTagDetector
-from hardware_interface import HardwareInterface
-from drone_hardware import DroneHardware
-from optical_velocity_controller import OpticalVelocityController
-from target_tracker import TargetTracker
-from video_source import AsyncVideoSource
-from target_detection import TargetDetection
+
+from custom_behavior.optical_flow.april_tag_detector import AprilTagDetector
+from custom_behavior.optical_flow.hardware_interface import HardwareInterface
+from custom_behavior.optical_flow.drone_hardware import DroneHardware
+from custom_behavior.optical_flow.optical_velocity_controller import OpticalVelocityController
+from custom_behavior.optical_flow.target_tracker import TargetTracker
+from custom_behavior.optical_flow.video_source import AsyncVideoSource
+from custom_behavior.optical_flow.target_detection import TargetDetection
 
 @dataclass
 class TargetDetection:
@@ -24,6 +25,7 @@ class TargetDetection:
 class AprilTagOpticalController:
     def __init__(
         self,
+        executor,
         video_source,
         hardware: DroneHardware,
         detector=AprilTagDetector(),
@@ -32,8 +34,7 @@ class AprilTagOpticalController:
         lost_frame_threshold=100,
         Kx=0.4, Ky=0.4, Kz=0.4,
         vx_limit=0.5, vy_limit=0.5, vz_limit=0.3,
-        dead_px=5,
-        executor_workers=2
+        dead_px=5
     ):
         self.loop_dt = 1.0 / loop_hz
         self.takeoff_alt = takeoff_alt_m
@@ -41,8 +42,8 @@ class AprilTagOpticalController:
         self.hardware = hardware
         self.detector = detector
 
-        self.executor = ThreadPoolExecutor(max_workers=executor_workers)
-        self.video = AsyncVideoSource(video_source, self.executor)
+        self.executor = executor
+        self.video = video_source
         self.tracker = TargetTracker(detector, lost_frame_threshold)
 
         self.velocity_ctrl = None
@@ -63,7 +64,7 @@ class AprilTagOpticalController:
         if not await self.hardware.can_arm_with_backoff():
             raise RuntimeError("Arm failed")
 
-        await self.hardware.arm_and_takeoff()
+        await self.hardware.arm_and_takeoff(target_alt_m=1.5)
         await self.hardware.start_offboard()
 
         self.velocity_ctrl = OpticalVelocityController(
@@ -165,8 +166,10 @@ class AprilTagOpticalController:
 # ===================== Entry =====================
 
 async def main():
+    executor_workers=2
+    executor = ThreadPoolExecutor(max_workers=executor_workers)
     controller = AprilTagOpticalController(
-        video_source="../../assets/ar_test_video.MOV",
+        video_source=AsyncVideoSource("../../assets/ar_test_video.MOV", executor),
         hardware=DroneHardware(),
     )
     await controller.run(runtime_sec=120.0)

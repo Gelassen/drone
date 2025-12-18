@@ -2,7 +2,7 @@ import pytest
 from unittest.mock import Mock
 
 from custom_behavior.optical_flow.optical_velocity_controller import OpticalVelocityController
-from tests.mock.fake_detector import FakeDetection
+from tests.mock.fake_detection import FakeDetection
 
 @pytest.fixture
 def controller():

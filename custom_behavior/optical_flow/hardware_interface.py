@@ -21,7 +21,7 @@ class HardwareInterface(ABC):
         pass
 
     @abstractmethod
-    async def arm_and_takeoff(self, target_alt_m: float):
+    async def arm_and_takeoff(self, target_alt_m: float = 1.5):
         pass
 
     @abstractmethod

@@ -6,10 +6,20 @@ class FakeHardware(HardwareInterface):
         self._armed = False
         self._offboard = False
         self._can_arm = can_arm
+        self._land_called = False
         self.calls = []
 
     def is_connected(self):
         return self._connected
+
+    def is_land_called(self):
+        return self._land_called
+    
+    def is_offboard(self):
+        return self._offboard
+    
+    def is_armed(self):
+        return self._armed
 
     async def connect(self):
         self.calls.append("connect")
@@ -40,6 +50,7 @@ class FakeHardware(HardwareInterface):
     async def land(self):
         self.calls.append("land")
         self._armed = False
+        self._land_called=True
 
     async def send_velocity(self, vx, vy, vz, yaw_rate=0):
         self.calls.append(("send_velocity", vx, vy, vz, yaw_rate))
