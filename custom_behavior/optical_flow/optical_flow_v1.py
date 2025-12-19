@@ -169,7 +169,8 @@ async def main():
     executor_workers=2
     executor = ThreadPoolExecutor(max_workers=executor_workers)
     controller = AprilTagOpticalController(
-        video_source=AsyncVideoSource("../../assets/ar_test_video.MOV", executor),
+        executor,
+        video_source=AsyncVideoSource("./assets/ar_test_video.MOV", executor),
         hardware=DroneHardware(),
     )
     await controller.run(runtime_sec=120.0)
