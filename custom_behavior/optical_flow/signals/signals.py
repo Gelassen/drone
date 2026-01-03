@@ -1,30 +1,13 @@
 import numpy as np
 
 from target_detection import TargetDetection
-
-class Point:
-
-    def __init__(self, x, y):
-        self.x = x 
-        self.y = y
-
-class Axis:
-    x_axis: float
-    y_axis: float
-    x_angle: float
-    y_angle: float
-
-
-class Aspect:
-    width: float
-    height: float
-    aspect: float
-
-class Speed:
-    vx: float 
-    vy: float
-    rotation_speed: float # omega
-    prev_marker: TargetDetection
+from models.signal_model import (
+    Aspect,
+    Axis,
+    Point,
+    Signal,
+    Speed
+)
 
 class SignalsUtil:
 
@@ -34,7 +17,7 @@ class SignalsUtil:
     def detect_center(self, marker: TargetDetection):
         return Point(marker.cx, marker.cy) 
     
-    def detect_axis(self, marker: TargetDetection):
+    def detect_axis(self, marker: TargetDetection) -> Axis:
         if marker.corners is None:
             return None
 
@@ -53,7 +36,7 @@ class SignalsUtil:
             np.arctan2(y_axis[1], y_axis[0])
         )
     
-    def detect_aspect(self, marker: TargetDetection):
+    def detect_aspect(self, marker: TargetDetection) -> Aspect:
         if marker.corners is None:
             return None
 
@@ -75,7 +58,7 @@ class SignalsUtil:
             aspect=aspect
         )
     
-    def detect_skew(self, marker):
+    def detect_skew(self, marker) -> list:
         c = marker.corners
 
         v1 = c[1] - c[0]
@@ -88,7 +71,7 @@ class SignalsUtil:
 
         return skew
     
-    def detect_target_speed(self, prev_marker: TargetDetection, marker: TargetDetection):
+    def detect_target_speed(self, prev_marker: TargetDetection, marker: TargetDetection) -> list:
         if prev_marker is None:
             prev_marker = marker
             return None
@@ -103,7 +86,7 @@ class SignalsUtil:
         prev_marker = marker
         return vx, vy
     
-    def detect_rotation_speed(self, prev_marker: TargetDetection, marker: TargetDetection):
+    def detect_rotation_speed(self, prev_marker: TargetDetection, marker: TargetDetection) -> float:
         if marker.corners is None or prev_marker is None:
             return None
 
