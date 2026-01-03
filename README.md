@@ -76,3 +76,10 @@ Related publications:
 <a href="https://gelassen.github.io/blog/2025/05/17/flying-drone-diy-part-II.html">Flying drone DIY, part II: configuration for the 1st version</a>
 
 <a href="https://gelassen.github.io/blog/2023/03/19/case-study-flying-drone-diy.html">Case study: Flying drone DIY</a>
+
+
+### Architecture simple diagram
+
+optical_flow_v1.py -- entry point and high-level pipeline
+
+april_tag_detector -- 

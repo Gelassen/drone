@@ -1,8 +1,10 @@
 import cv2
 import apriltag
 import numpy as np
+import time
 
 from custom_behavior.optical_flow.target_detection import TargetDetection
+from custom_behavior.optical_flow.utils import Utils
 
 class AprilTagDetector:
 
@@ -10,13 +12,15 @@ class AprilTagDetector:
             self,
             tag_family = "tag16h5",
             tag_size_m=0.05,
-            focal_length_px=600.0
+            focal_length_px=600.0,
+            utils = Utils()
         ):
         self.at_options = apriltag.DetectorOptions(families=tag_family)
         self.apriltag_detector = apriltag.Detector(self.at_options)
 
         self.tag_size_m=tag_size_m
         self.focal_length_px=focal_length_px
+        self.utils = Utils()
 
     def get_focal_length_px(self):
         return self.focal_length_px
@@ -39,9 +43,16 @@ class AprilTagDetector:
                     squares.append((x, y, w, h))
         return squares
 
-    def detect_tags_in_roi(self, roi):
+    def detect_tags_in_roi(self, roi, frame):
         gray = cv2.cvtColor(roi, cv2.COLOR_BGR2GRAY)
         return self.apriltag_detector.detect(gray)
+        # camera_params = self.utils.calculate_camera_params(frame)
+        # return self.apriltag_detector.detect(
+        #         gray,
+        #         # estimate_tag_pose=True,
+        #         camera_params=camera_params,
+        #         tag_size=self.tag_size_m
+        # )
 
     def estimate_distance_from_px(self, px_size):
         if px_size <= 0:
@@ -62,9 +73,14 @@ class AprilTagDetector:
 
         for (x, y, w, h) in squares:
             roi = frame[y:y+h, x:x+w]
-            tags = self.detect_tags_in_roi(roi)
+            tags = self.detect_tags_in_roi(roi, frame)
 
             for t in tags:
+                # print("Rotation matrix:", t.pose_R)
+                print("H[2,0], H[2,1]:", t.homography[2,0], t.homography[2,1])
+                print("H[0,0], H[0,1]:", t.homography[0,0], t.homography[0,1])
+                print("H[1,0], H[1,1]:", t.homography[1,0], t.homography[1,1])
+
                 corners = np.array(t.corners)
                 side = np.mean([
                     np.linalg.norm(corners[0] - corners[1]),
@@ -74,7 +90,15 @@ class AprilTagDetector:
                 cy = corners[:, 1].mean() + y
 
                 if not best or side > best.px_size:
-                    best = TargetDetection(cx, cy, side, "tag")
+                    best = TargetDetection(
+                            cx=cx,
+                            cy=cy,
+                            side=side,
+                            source="tag",
+                            corners=corners,
+                            homography=t.homography,
+                            timestamp=time.time()
+                    )
 
         return best
 

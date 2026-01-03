@@ -10,8 +10,6 @@ class AsyncVideoSource:
         self.frame_h = None
 
     def _open_sync(self):
-        print(self.src, type(self.src))
-
         self.cap = cv2.VideoCapture(self.src)
         if not self.cap.isOpened():
             raise RuntimeError(f"Cannot open video source: {self.src}")
