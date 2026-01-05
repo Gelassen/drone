@@ -43,18 +43,6 @@ class Speed:
     rotation_speed: float # omega
     prev_marker: TargetDetection
 
-class SignalConfidence:
-    signal_name: SignalName
-    value: float          # 0..1
-    ts: int
-    components: dict      # для дебага
-
-class Channel(Enum):
-    IMAGE_X = "image_x"      # cx → roll
-    IMAGE_Y = "image_y"      # cy → pitch
-    ANGLE   = "angle"        # marker axis angle
-    OMEGA   = "omega"        # rotation speed
-
 class SignalMetricsNames(Enum):
     NOISE = "noise"
     STABILITY = "stability"
@@ -69,3 +57,26 @@ class SignalMetrics:
     monotonic: float
     dropout_rate: float
     latency: float
+
+class SignalConfidence:
+    signal_name: SignalName
+    value: float          # 0..1
+    ts: int
+    components: dict      # для дебага
+
+class Channel(Enum):
+    IMAGE_X = "image_x"      # cx → roll
+    IMAGE_Y = "image_y"      # cy → pitch
+    ANGLE   = "angle"        # marker axis angle
+    OMEGA   = "omega"        # rotation speed
+
+class ChannelConfidence:
+    channel: Channel
+    value: float          # 0..1
+    signals: dict         # SignalName → SignalConfidence
+    ts: int
+
+class FunctionType(Enum):
+    LINEAR = "linear"
+    QUADRATIC = "quadratic"
+    SQRT = "sqrt"
