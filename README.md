@@ -82,4 +82,18 @@ Related publications:
 
 optical_flow_v1.py -- entry point and high-level pipeline
 
-april_tag_detector -- 
+april_tag_detector -- recognize marker on the image 
+
+Signal (cx, cy, skew, omega, ...)
+        ↓
+SignalEvaluator (noise, stability, monotonic, latency, dropout)
+        ↓
+SignalConfidence (0…1)
+        ↓
+SignalGate (enable / disable / weight)
+        ↓
+Arbitrator (cx vs cy vs angle vs omega)
+        ↓
+Adaptive Gain Scheduler
+        ↓
+Control Command (roll / pitch)

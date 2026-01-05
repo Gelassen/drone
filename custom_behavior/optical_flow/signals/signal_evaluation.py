@@ -135,6 +135,9 @@ class SignalEvaluator:
             if len(non_zero) == 0:
                 return 0.0
 
+            # 1.0 → строго монотонно
+            # ≈0 → шум / колебания
+
             return float(abs(np.sum(non_zero)) / len(non_zero))
 
         return monotonic
