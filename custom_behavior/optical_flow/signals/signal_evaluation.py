@@ -1,12 +1,16 @@
 import numpy as np
-from signals.signal_buffer import SignalBuffer
 
-import numpy as np
+from signals.signal_buffer import SignalBuffer
+from models.signal_model import (
+    SignalMetricsNames
+)
+from signals.signal_filter import SignalFilter
 
 class SignalEvaluator:
 
     def __init__(self, buffer):
         self.buffer = buffer
+        self.signal_filter = SignalFilter()
         print("SignalEvaluator::init")
 
     # --------------------------------------------------
@@ -15,6 +19,9 @@ class SignalEvaluator:
     def prepare_rms_of_noise(self, ema_window=10):
 
         def rms(signal):
+            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE):
+                raise Exception(f'RMS doesn\'t support {signal.name}')
+            
             self.buffer.update(signal)
             values = np.array(self.buffer.values(signal.name))
 

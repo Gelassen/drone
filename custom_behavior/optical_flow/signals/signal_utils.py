@@ -14,6 +14,7 @@ class SignalsUtil:
     def __init__(self):
         print("=== SignalsUtil init ===")
 
+    # deprecated
     def detect_center(self, marker: TargetDetection):
         return Point(marker.cx, marker.cy) 
     

@@ -78,7 +78,7 @@ Related publications:
 <a href="https://gelassen.github.io/blog/2023/03/19/case-study-flying-drone-diy.html">Case study: Flying drone DIY</a>
 
 
-### Architecture simple diagram
+### Architecture simplified diagram
 
 optical_flow_v1.py -- entry point and high-level pipeline
 

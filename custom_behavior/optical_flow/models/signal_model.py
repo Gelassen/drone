@@ -31,7 +31,6 @@ class Axis:
     x_angle: float
     y_angle: float
 
-
 class Aspect:
     width: float
     height: float
@@ -49,6 +48,7 @@ class SignalMetricsNames(Enum):
     MONOTONIC = "monotonic"
     DROPOUT_RATE = "dropout"
     LATENCY = "latency"
+    SPECTRAL_DENSITY = "spectral density"
 
 class SignalMetrics:
     rms_noise: float
@@ -80,3 +80,54 @@ class FunctionType(Enum):
     LINEAR = "linear"
     QUADRATIC = "quadratic"
     SQRT = "sqrt"
+
+SIGNAL_METRIC_APPLICABILITY = {
+    SignalName.MARKER_X_POSITION: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.STABILITY,
+        SignalMetricsNames.MONOTONIC,
+        SignalMetricsNames.DROPOUT_RATE,
+        SignalMetricsNames.LATENCY,
+    },
+    SignalName.MARKER_Y_POSITION: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.STABILITY,
+        SignalMetricsNames.MONOTONIC,
+        SignalMetricsNames.DROPOUT_RATE,
+        SignalMetricsNames.LATENCY,
+    },
+    SignalName.MARKER_X_AXIS_ANGLE: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.STABILITY,
+        SignalMetricsNames.MONOTONIC,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_Y_AXIS_ANGLE: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.STABILITY,
+        SignalMetricsNames.MONOTONIC,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_ASPECT_RATIO: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_SKEW: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_X_SPEED: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_Y_SPEED: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+    SignalName.MARKER_ROTATION_SPEED: {
+        SignalMetricsNames.NOISE,
+        SignalMetricsNames.DROPOUT_RATE,
+    },
+}
+
+
