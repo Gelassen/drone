@@ -12,7 +12,7 @@ class Arbitrator:
         self.min_angle_conf = min_angle_conf
         self.min_omega_conf = min_omega_conf
 
-    def select(self, channels: dict[Channel, ChannelConfidence]):
+    def select(self, channels: dict[Channel, ChannelConfidence]) -> Channel:
         cx = channels.get(Channel.IMAGE_X)
         cy = channels.get(Channel.IMAGE_Y)
         angle = channels.get(Channel.ANGLE)

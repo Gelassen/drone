@@ -130,4 +130,11 @@ SIGNAL_METRIC_APPLICABILITY = {
     },
 }
 
+CHANNEL_TO_SIGNALS = {
+    Channel.IMAGE_X: [SignalName.MARKER_X_POSITION, SignalName.MARKER_X_SPEED],
+    Channel.IMAGE_Y: [SignalName.MARKER_Y_POSITION, SignalName.MARKER_Y_SPEED],
+    Channel.ANGLE: [SignalName.MARKER_X_AXIS_ANGLE, SignalName.MARKER_Y_AXIS_ANGLE],
+    Channel.OMEGA: [SignalName.MARKER_ROTATION_SPEED],
+}
+
 

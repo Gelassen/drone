@@ -13,9 +13,11 @@ from models.signal_model import (
     Aspect,
     Signal,
     SignalMetricsNames,
-    SIGNAL_ALLOWED_METRICS,
     SignalConfidence,
-    ChannelConfidence
+    ChannelConfidence,
+    CHANNEL_TO_SIGNALS,
+    Channel,
+    SignalName
 )
 from target_detection import TargetDetection
 from converters import converters
@@ -50,20 +52,22 @@ class OpticalVelocityControllerV2:
         self.prepare_monotonic_coefficient = signal_evaluator.prepare_monotonic_coefficient()
         self.signal_filter = signal_filter
     
-    def compute(self, detection: TargetDetection, target_alt: int) -> None:
+    def compute(self, detection: TargetDetection, target_alt: int) -> dict:
         if self.previous_detection is None:
             print("OpticalVelocityControllerV2::compute - collect 1st marker, skip analysis at this step")
             self.previous_detection = detection
-            return None
+            return {}
 
+        # --- Detect features ---
         axis: Axis = self.signal_util.detect_axis(detection)
         aspect: Aspect = self.signal_util.detect_aspect(detection)
         skew: list = self.signal_util.detect_skew(detection)
         speed: list = self.signal_util.detect_target_speed(detection)
         rotation_speed: float = self.signal_util.detect_rotation_speed(detection)
 
-        current_time_in_ms = time.time() * 1000
+        current_time_in_ms = int(time.time() * 1000)
 
+        # --- Convert raw detection to signals ---
         signals = [
             converters.marker_x_position_signal(detection, self.previous_detection),
             converters.marker_y_position_signal(detection, self.previous_detection),
@@ -77,59 +81,75 @@ class OpticalVelocityControllerV2:
             converters.marker_y_speed_signal(speed[1], current_time_in_ms),
             converters.marker_rotation_speed_signal(rotation_speed),
         ]
+        
+        signals_dict = {s.name: s for s in signals}
 
+        # --- Evaluate metrics ---
         evaluated = {}
-
         for signal in signals:
             evaluated[signal.name] = self.evaluate_signal_metrics(signal)
 
-        # --- Confidence ---
-        signal_confidences = {}  # SignalName → SignalConfidence
-        current_ts = int(time.time() * 1000)
+        # --- Compute signal-level confidence ---
+        signal_confidences: dict = {}
         for signal_name, metrics in evaluated.items():
             conf_value = self.confidence_layer.compute(metrics)
             signal_confidences[signal_name] = SignalConfidence(
                 signal_name=signal_name,
                 value=conf_value,
-                ts=current_ts,
+                ts=current_time_in_ms,
                 components=metrics.__dict__  # optional: debug info
             )
 
-        # TODO: migrate to converter
-        channel_confidences = {}  # Channel → ChannelConfidence
-        for channel, required_signals in signal_confidences.items():
-            # CHANNEL_TO_SIGNALS is mapping like:
-            # Channel.IMAGE_X → [SignalName.MARKER_X_POSITION, SignalName.MARKER_X_SPEED]
-            signals_in_channel = {s: signal_confidences[s] for s in required_signals if s in signal_confidences}
-            if signals_in_channel:
-                # simplest: take min confidence among required signals
-                channel_value = min(s.value for s in signals_in_channel.values())
+        # --- Compute channel-level confidence ---
+        channel_confidences: dict = {}
+        for channel, required_signals in CHANNEL_TO_SIGNALS.items():
+            present_signals = {s: signal_confidences[s] for s in required_signals if s in signal_confidences}
+            if present_signals:
+                min_conf = min(s.value for s in present_signals.values())
                 channel_confidences[channel] = ChannelConfidence(
                     channel=channel,
-                    value=channel_value,
-                    signals=signals_in_channel,
-                    ts=current_ts
+                    value=min_conf,
+                    signals=present_signals,
+                    ts=current_time_in_ms
                 )
 
         # --- Gating ---
-        gated_channels = {}
-        for channel, channel_conf in channel_confidences.items():
-            if self.signal_gate.update(channel_conf):
-                gated_channels[channel] = channel_conf
+        gated_channels: dict = {}
+        for channel, ch_conf in channel_confidences.items():
+            if self.signal_gate.update(channel=channel, confidence=ch_conf.value, ts=current_time_in_ms):
+                gated_channels[channel] = ch_conf
 
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
 
-        # --- Gain scheduling ---
-        self.scheduler.gain(confidence, target_alt)
+        # --- Generate raw command values per channel ---
+        raw_command = {
+            Channel.IMAGE_X: signals_dict[SignalName.MARKER_X_POSITION].value,
+            Channel.IMAGE_Y: signals_dict[SignalName.MARKER_Y_POSITION].value,
+            Channel.ANGLE: signals_dict[SignalName.MARKER_X_AXIS_ANGLE].value,
+            Channel.OMEGA: signals_dict[SignalName.MARKER_ROTATION_SPEED].value,
+        }
 
+        # --- Apply adaptive gain ---
+        scaled_commands: dict = {}
+        if command:
+            if isinstance(command, tuple):
+                # e.g., IMAGE_X & IMAGE_Y
+                for ch in command:
+                    gain = self.scheduler.gain(gated_channels[ch].value)
+                    scaled_commands[ch] = raw_command[ch] * gain
+            else:
+                gain = self.scheduler.gain(gated_channels[command].value)
+                scaled_commands[command] = raw_command[command] * gain
+
+        # --- Update previous detection ---
         self.previous_detection = detection
-        return command
+
+        # Return scaled commands; empty dict means HOLD
+        return scaled_commands
 
     def evaluate_signal_metrics(self, signal: Signal) -> dict:
         metrics = {}
-
-        allowed = SIGNAL_ALLOWED_METRICS.get(signal.name, set())
 
         evaluators = {
             SignalMetricsNames.NOISE: self.prepare_rms_of_noise,
@@ -147,3 +167,4 @@ class OpticalVelocityControllerV2:
                 metrics[metric] = None  
 
         return metrics
+
