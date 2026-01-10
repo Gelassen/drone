@@ -15,6 +15,12 @@ class SignalEvaluator:
 
     # --------------------------------------------------
     # RMS шума (отклонение от EMA)
+    # 
+    # ema_window controls locality
+    # 
+    # Larger window → slower trend → higher RMS
+    # 
+    # Smaller window → more aggressive jitter detection
     # --------------------------------------------------
     def prepare_rms_of_noise(self, ema_window=10):
 

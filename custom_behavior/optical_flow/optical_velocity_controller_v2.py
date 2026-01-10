@@ -7,6 +7,7 @@ from signals.signal_confidence import ConfidenceLayer
 from signals.signal_evaluation import SignalEvaluator
 from signals.signal_utils import SignalsUtil
 from signals.signal_filter import SignalFilter
+from signals.signal_buffer import SignalBuffer
 
 from models.signal_model import (
     Axis,
@@ -31,7 +32,7 @@ class OpticalVelocityControllerV2:
             arbitrator = Arbitrator(),
             signal_gate = SignalGate(),
             confidence_layer = ConfidenceLayer(),
-            signal_evaluator = SignalEvaluator(),
+            signal_evaluator = SignalEvaluator(SignalBuffer),
             signal_util = SignalsUtil(),
             signal_filter = SignalFilter()
     ):
