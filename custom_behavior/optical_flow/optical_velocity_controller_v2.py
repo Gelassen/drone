@@ -8,6 +8,7 @@ from signals.signal_evaluation import SignalEvaluator
 from signals.signal_utils import SignalsUtil
 from signals.signal_filter import SignalFilter
 from signals.signal_buffer import SignalBuffer
+from signals.signal_command_assembler import CommandAssembler
 
 from models.signal_model import (
     Axis,
@@ -18,7 +19,8 @@ from models.signal_model import (
     ChannelConfidence,
     CHANNEL_TO_SIGNALS,
     Channel,
-    SignalName
+    SignalName,
+    ManagingCommand
 )
 from target_detection import TargetDetection
 from converters import converters
@@ -34,7 +36,8 @@ class OpticalVelocityControllerV2:
             confidence_layer = ConfidenceLayer(),
             signal_evaluator = SignalEvaluator(SignalBuffer),
             signal_util = SignalsUtil(),
-            signal_filter = SignalFilter()
+            signal_filter = SignalFilter(),
+            command_assembler = CommandAssembler()
     ):
         self.scheduler = scheduler
         self.arbitrator = arbitrator
@@ -52,6 +55,7 @@ class OpticalVelocityControllerV2:
         self.prepare_latency = signal_evaluator.prepare_latency()
         self.prepare_monotonic_coefficient = signal_evaluator.prepare_monotonic_coefficient()
         self.signal_filter = signal_filter
+        self.command_assembler = command_assembler
     
     def compute(self, detection: TargetDetection, target_alt: int) -> dict:
         if self.previous_detection is None:
@@ -146,8 +150,9 @@ class OpticalVelocityControllerV2:
         # --- Update previous detection ---
         self.previous_detection = detection
 
-        # Return scaled commands; empty dict means HOLD
-        return scaled_commands
+        managing_command: ManagingCommand = self.command_assembler.signals_to_command(scaled_commands)
+
+        return managing_command
 
     def evaluate_signal_metrics(self, signal: Signal) -> dict:
         metrics = {}

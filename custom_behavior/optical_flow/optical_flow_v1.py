@@ -6,11 +6,11 @@ import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
-
 from custom_behavior.optical_flow.april_tag_detector import AprilTagDetector
 from custom_behavior.optical_flow.hardware_interface import HardwareInterface
 from custom_behavior.optical_flow.drone_hardware import DroneHardware
 from custom_behavior.optical_flow.optical_velocity_controller import OpticalVelocityController
+from custom_behavior.optical_flow.optical_velocity_controller_v2 import OpticalVelocityControllerV2
 from custom_behavior.optical_flow.target_tracker import TargetTracker
 from custom_behavior.optical_flow.video_source import AsyncVideoSource
 from custom_behavior.optical_flow.target_detection import TargetDetection
@@ -23,6 +23,7 @@ class TargetDetection:
     source: str  # "tag" | "square"
 
 class AprilTagOpticalController:
+    
     def __init__(
         self,
         executor,
@@ -67,14 +68,15 @@ class AprilTagOpticalController:
         await self.hardware.arm_and_takeoff(target_alt_m=1.5)
         await self.hardware.start_offboard()
 
-        self.velocity_ctrl = OpticalVelocityController(
-            self.detector,
-            self.video.frame_w,
-            self.video.frame_h,
-            self.Kx, self.Ky, self.Kz,
-            self.vx_limit, self.vy_limit, self.vz_limit,
-            self.dead_px
-        )
+        # self.velocity_ctrl = OpticalVelocityController(
+        #     self.detector,
+        #     self.video.frame_w,
+        #     self.video.frame_h,
+        #     self.Kx, self.Ky, self.Kz,
+        #     self.vx_limit, self.vy_limit, self.vz_limit,
+        #     self.dead_px
+        # )
+        self.velocity_ctrl = OpticalVelocityControllerV2()
 
         self.last_send = time.time()
 

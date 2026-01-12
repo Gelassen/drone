@@ -137,4 +137,10 @@ CHANNEL_TO_SIGNALS = {
     Channel.OMEGA: [SignalName.MARKER_ROTATION_SPEED],
 }
 
+class ManagingCommand:
+    velocity_x: float
+    velocity_y: float
+    velocity_z: float
+    yaw: float
+
 
