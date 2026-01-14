@@ -1,10 +1,10 @@
 import numpy as np
 
-from signals.signal_buffer import SignalBuffer
-from models.signal_model import (
+from custom_behavior.optical_flow.signals.signal_buffer import SignalBuffer
+from custom_behavior.optical_flow.models.signal_model import (
     SignalMetricsNames
 )
-from signals.signal_filter import SignalFilter
+from custom_behavior.optical_flow.signals.signal_filter import SignalFilter
 
 class SignalEvaluator:
 

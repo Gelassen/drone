@@ -1,4 +1,4 @@
-from models.signal_model import FunctionType
+from custom_behavior.optical_flow.models.signal_model import FunctionType
 
 class AdaptiveGainScheduler:
 

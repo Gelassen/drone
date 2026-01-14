@@ -1,4 +1,4 @@
-from models.signal_model import (
+from custom_behavior.optical_flow.models.signal_model import (
     Signal,
     SignalMetricsNames,
     SIGNAL_METRIC_APPLICABILITY

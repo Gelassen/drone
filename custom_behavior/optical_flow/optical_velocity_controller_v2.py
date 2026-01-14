@@ -1,16 +1,16 @@
 import time
 
-from signals.signal_adaptive_gain_scheduler import AdaptiveGainScheduler
-from signals.signal_arbitrator import Arbitrator
-from signals.signal_gate import SignalGate
-from signals.signal_confidence import ConfidenceLayer
-from signals.signal_evaluation import SignalEvaluator
-from signals.signal_utils import SignalsUtil
-from signals.signal_filter import SignalFilter
-from signals.signal_buffer import SignalBuffer
-from signals.signal_command_assembler import CommandAssembler
+from custom_behavior.optical_flow.signals.signal_adaptive_gain_scheduler import AdaptiveGainScheduler
+from custom_behavior.optical_flow.signals.signal_arbitrator import Arbitrator
+from custom_behavior.optical_flow.signals.signal_gate import SignalGate
+from custom_behavior.optical_flow.signals.signal_confidence import ConfidenceLayer
+from custom_behavior.optical_flow.signals.signal_evaluation import SignalEvaluator
+from custom_behavior.optical_flow.signals.signal_utils import SignalsUtil
+from custom_behavior.optical_flow.signals.signal_filter import SignalFilter
+from custom_behavior.optical_flow.signals.signal_buffer import SignalBuffer
+from custom_behavior.optical_flow.signals.signal_command_assembler import CommandAssembler
 
-from models.signal_model import (
+from custom_behavior.optical_flow.models.signal_model import (
     Axis,
     Aspect,
     Signal,
@@ -22,8 +22,8 @@ from models.signal_model import (
     SignalName,
     ManagingCommand
 )
-from target_detection import TargetDetection
-from converters import converters
+from custom_behavior.optical_flow.target_detection import TargetDetection
+from custom_behavior.optical_flow.converters import converters
 
 
 class OpticalVelocityControllerV2:

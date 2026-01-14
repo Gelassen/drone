@@ -1,9 +1,9 @@
-from types import Dict
-from models.signal_model import SignalMetrics
+
+from custom_behavior.optical_flow.models.signal_model import SignalMetrics
 
 class ConfidenceLayer:
 
-    def __init__(self, weights: Dict[str, float]):
+    def __init__(self, weights: dict[str, float]):
         """
         weights: веса компонент, например:
         {

@@ -1,5 +1,5 @@
 from enum import Enum
-from target_detection import TargetDetection
+from custom_behavior.optical_flow.target_detection import TargetDetection
 
 class SignalName(Enum):
     MARKER_X_POSITION = "cx"          # центр маркера по X

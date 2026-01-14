@@ -1,7 +1,7 @@
 import numpy as np
 
-from target_detection import TargetDetection
-from models.signal_model import (
+from custom_behavior.optical_flow.target_detection import TargetDetection
+from custom_behavior.optical_flow.models.signal_model import (
     Aspect,
     Axis,
     Point,

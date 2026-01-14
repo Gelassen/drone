@@ -14,6 +14,7 @@ from custom_behavior.optical_flow.optical_velocity_controller_v2 import OpticalV
 from custom_behavior.optical_flow.target_tracker import TargetTracker
 from custom_behavior.optical_flow.video_source import AsyncVideoSource
 from custom_behavior.optical_flow.target_detection import TargetDetection
+from custom_behavior.optical_flow.models.signal_model import ManagingCommand
 
 @dataclass
 class TargetDetection:
@@ -127,8 +128,12 @@ class AprilTagOpticalController:
             return
 
         if detection:
-            vx, vy, vz, _ = self.velocity_ctrl.compute(detection, target_alt)
-            await self._send_velocity_safe(vx, vy, vz)
+            managing_command: ManagingCommand = self.velocity_ctrl.compute(detection, target_alt)
+            await self._send_velocity_safe(
+                managing_command.velocity_x, 
+                managing_command.velocity_y, 
+                managing_command.velocity_z
+            )
         else:
             await self._hover_if_needed()
 
