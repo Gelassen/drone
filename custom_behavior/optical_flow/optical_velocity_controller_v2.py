@@ -28,13 +28,17 @@ from custom_behavior.optical_flow.converters import converters
 
 class OpticalVelocityControllerV2:
 
+    RISKS_WEIGHTS = {
+
+    }
+
     def __init__(
             self,
-            scheduler = AdaptiveGainScheduler(),
+            scheduler = AdaptiveGainScheduler(min_conf=0.35, max_conf=0.75), # TODO: tune me
             arbitrator = Arbitrator(),
             signal_gate = SignalGate(),
-            confidence_layer = ConfidenceLayer(),
-            signal_evaluator = SignalEvaluator(SignalBuffer),
+            confidence_layer = ConfidenceLayer.with_default_weights(),
+            signal_evaluator = SignalEvaluator(SignalBuffer()),
             signal_util = SignalsUtil(),
             signal_filter = SignalFilter(),
             command_assembler = CommandAssembler()
