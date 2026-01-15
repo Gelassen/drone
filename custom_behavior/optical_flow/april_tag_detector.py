@@ -111,6 +111,7 @@ class AprilTagDetector:
             cx=x + w / 2,
             cy=y + h / 2,
             px_size=max(w, h),
-            source="square"
+            source="square",
+            timestamp=time.time()
         )
 

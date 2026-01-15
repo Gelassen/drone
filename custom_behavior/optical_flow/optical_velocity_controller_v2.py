@@ -67,12 +67,20 @@ class OpticalVelocityControllerV2:
             self.previous_detection = detection
             return {}
 
+        print(detection)
+
         # --- Detect features ---
         axis: Axis = self.signal_util.detect_axis(detection)
         aspect: Aspect = self.signal_util.detect_aspect(detection)
         skew: list = self.signal_util.detect_skew(detection)
-        speed: list = self.signal_util.detect_target_speed(detection)
-        rotation_speed: float = self.signal_util.detect_rotation_speed(detection)
+        speed: list = self.signal_util.detect_target_speed(
+            prev_marker=self.previous_detection, 
+            marker=detection
+        )
+        rotation_speed: float = self.signal_util.detect_rotation_speed(
+            prev_marker=self.previous_detection,
+            marker=detection
+        )
 
         current_time_in_ms = int(time.time() * 1000)
 
@@ -88,8 +96,11 @@ class OpticalVelocityControllerV2:
             converters.marker_skew_signal(skew, current_time_in_ms),
             converters.marker_x_speed_signal(speed[0], current_time_in_ms),
             converters.marker_y_speed_signal(speed[1], current_time_in_ms),
-            converters.marker_rotation_speed_signal(rotation_speed),
+            converters.marker_rotation_speed_signal(rotation_speed, current_time_in_ms),
         ]
+
+        for s in signals:
+            print(s)
         
         signals_dict = {s.name: s for s in signals}
 

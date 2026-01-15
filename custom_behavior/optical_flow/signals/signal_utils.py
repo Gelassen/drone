@@ -59,7 +59,10 @@ class SignalsUtil:
             aspect=aspect
         )
     
-    def detect_skew(self, marker) -> list:
+    def detect_skew(self, marker: TargetDetection) -> list:
+        if marker.corners is None:
+            return None
+        
         c = marker.corners
 
         v1 = c[1] - c[0]
@@ -77,7 +80,9 @@ class SignalsUtil:
             prev_marker = marker
             return None
 
-        dt = marker.ts - prev_marker.ts
+        print("SignalUtils::detect_target_speed()", marker)
+        print("SignalUtils::detect_target_speed()", prev_marker)
+        dt = marker.timestamp - prev_marker.timestamp
         if dt <= 0:
             return None
 
@@ -97,7 +102,7 @@ class SignalsUtil:
         if axis_now is None or axis_prev is None:
             return None
 
-        dt = marker.ts - prev_marker.ts
+        dt = marker.timestamp - prev_marker.timestamp
         if dt <= 0:
             return None
 

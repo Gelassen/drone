@@ -19,6 +19,16 @@ class Signal:
     value: float
     ts: int
 
+    def __init__(
+        self,
+        name: SignalName,
+        value: float,
+        ts: int
+    ):
+        self.name=name
+        self.value=value
+        self.ts=ts
+
 class Point:
 
     def __init__(self, x, y):
