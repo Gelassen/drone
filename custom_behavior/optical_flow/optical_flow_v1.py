@@ -2,26 +2,15 @@
 import asyncio
 import time
 import cv2
-import numpy as np
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 
 from custom_behavior.optical_flow.april_tag_detector import AprilTagDetector
-from custom_behavior.optical_flow.hardware_interface import HardwareInterface
 from custom_behavior.optical_flow.drone_hardware import DroneHardware
-from custom_behavior.optical_flow.optical_velocity_controller import OpticalVelocityController
 from custom_behavior.optical_flow.optical_velocity_controller_v2 import OpticalVelocityControllerV2
 from custom_behavior.optical_flow.target_tracker import TargetTracker
 from custom_behavior.optical_flow.video_source import AsyncVideoSource
-from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.models.signal_model import ManagingCommand
-
-@dataclass
-class TargetDetection:
-    cx: float
-    cy: float
-    px_size: float
-    source: str  # "tag" | "square"
 
 class AprilTagOpticalController:
     

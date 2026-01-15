@@ -54,7 +54,7 @@ class OpticalVelocityControllerV2:
 
         self.prepare_rms_of_noise = signal_evaluator.prepare_rms_of_noise()
         self.prepare_spectral_density = signal_evaluator.prepare_spectral_density()
-        self.prepare_dropout_rate = signal_evaluator.prepare_dropout_rate()
+        self.prepare_dropout_rate = signal_evaluator.prepare_dropout_rate(expected_dt=16.67)
         self.prepare_sign_stability = signal_evaluator.prepare_sign_stability()
         self.prepare_latency = signal_evaluator.prepare_latency()
         self.prepare_monotonic_coefficient = signal_evaluator.prepare_monotonic_coefficient()

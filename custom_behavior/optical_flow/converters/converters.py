@@ -11,7 +11,7 @@ def marker_x_position_signal(marker: TargetDetection, prev_marker: TargetDetecti
     return Signal(
         name=SignalName.MARKER_X_POSITION,
         value=float(marker.cx - prev_marker.cx),
-        ts=marker.ts
+        ts=marker.timestamp
     )
 
 def marker_y_position_signal(marker: TargetDetection, prev_marker: TargetDetection) -> Signal:
@@ -20,7 +20,7 @@ def marker_y_position_signal(marker: TargetDetection, prev_marker: TargetDetecti
     return Signal(
         name=SignalName.MARKER_Y_POSITION,
         value=float(marker.cy - prev_marker.cy),
-        ts=marker.ts
+        ts=marker.timestamp
     )
 
 # ---------- оси ----------

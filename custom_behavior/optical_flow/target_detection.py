@@ -6,7 +6,7 @@ class TargetDetection:
     cy: float
     px_size: float
     source: str   # "tag" | "square"
-
+    side = None
     corners = None      # shape (4,2)
-    h = None         # 3x3
-    ts = None
+    homography = None         # 3x3
+    timestamp = None

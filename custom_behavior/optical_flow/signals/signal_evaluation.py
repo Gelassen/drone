@@ -68,6 +68,12 @@ class SignalEvaluator:
     # --------------------------------------------------
     # Dropout rate (пропуски)
     # --------------------------------------------------
+    # | fps видео | expected_dt |
+    # | --------- | ----------- |
+    # | 30        | 33 ms       |
+    # | 60        | 16.6 ms     |
+    # | 120       | 8.3 ms      |
+
     def prepare_dropout_rate(self, expected_dt):
 
         def dropout(signal):
