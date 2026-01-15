@@ -20,7 +20,7 @@ class AprilTagDetector:
 
         self.tag_size_m=tag_size_m
         self.focal_length_px=focal_length_px
-        self.utils = Utils()
+        self.utils = utils
 
     def get_focal_length_px(self):
         return self.focal_length_px

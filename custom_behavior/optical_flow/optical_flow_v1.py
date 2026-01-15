@@ -118,11 +118,12 @@ class AprilTagOpticalController:
 
         if detection:
             managing_command: ManagingCommand = self.velocity_ctrl.compute(detection, target_alt)
-            await self._send_velocity_safe(
-                managing_command.velocity_x, 
-                managing_command.velocity_y, 
-                managing_command.velocity_z
-            )
+            if managing_command:
+                await self._send_velocity_safe(
+                    managing_command.velocity_x, 
+                    managing_command.velocity_y, 
+                    managing_command.velocity_z
+                )
         else:
             await self._hover_if_needed()
 
