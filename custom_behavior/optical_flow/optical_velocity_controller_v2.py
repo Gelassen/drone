@@ -67,7 +67,7 @@ class OpticalVelocityControllerV2:
             self.previous_detection = detection
             return {}
 
-        print(detection)
+        print("Detection", detection)
 
         # --- Detect features ---
         axis: Axis = self.signal_util.detect_axis(detection)
@@ -83,6 +83,8 @@ class OpticalVelocityControllerV2:
         )
 
         current_time_in_ms = int(time.time() * 1000)
+
+        print("Detection before signal conversion: ", detection)
 
         # --- Convert raw detection to signals ---
         signals = [
@@ -100,9 +102,14 @@ class OpticalVelocityControllerV2:
         ]
 
         for s in signals:
-            print(s)
+            print("Signal:", s)
         
-        signals_dict = {s.name: s for s in signals}
+        signals_dict = {
+            s.name: s
+            for s in signals
+            if s is not None
+        }
+
 
         # --- Evaluate metrics ---
         evaluated = {}
@@ -182,7 +189,7 @@ class OpticalVelocityControllerV2:
         }
 
         for metric, evaluator in evaluators.items():
-            if self.signal_filter.allows(metric):
+            if self.signal_filter.allows(signal, metric):
                 metrics[metric] = evaluator(signal)
             else:
                 metrics[metric] = None  

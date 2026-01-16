@@ -29,6 +29,9 @@ class Signal:
         self.value=value
         self.ts=ts
 
+    def __str__(self) -> str:
+        return f"Signal(name={self.name}, value={self.value}, ts={self.ts})"
+
 class Point:
 
     def __init__(self, x, y):
