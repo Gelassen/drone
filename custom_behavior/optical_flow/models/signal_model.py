@@ -56,7 +56,8 @@ class Speed:
     prev_marker: TargetDetection
 
 class SignalMetricsNames(Enum):
-    NOISE = "noise"
+    NOISE_STD = "noise_std"
+    NOISE_RMS = "noise_rms"
     STABILITY = "stability"
     MONOTONIC = "monotonic"
     DROPOUT_RATE = "dropout"
@@ -64,7 +65,8 @@ class SignalMetricsNames(Enum):
     SPECTRAL_DENSITY = "spectral density"
 
 class SignalMetrics:
-    rms_noise: float
+    rms_noise: float 
+    std_noise: float 
     spectral_density: float
     sign_stability: float
     monotonic: float
@@ -96,49 +98,49 @@ class FunctionType(Enum):
 
 SIGNAL_METRIC_APPLICABILITY = {
     SignalName.MARKER_X_POSITION: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.STABILITY,
         SignalMetricsNames.MONOTONIC,
         SignalMetricsNames.DROPOUT_RATE,
         SignalMetricsNames.LATENCY,
     },
     SignalName.MARKER_Y_POSITION: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.STABILITY,
         SignalMetricsNames.MONOTONIC,
         SignalMetricsNames.DROPOUT_RATE,
         SignalMetricsNames.LATENCY,
     },
     SignalName.MARKER_X_AXIS_ANGLE: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.STABILITY,
         SignalMetricsNames.MONOTONIC,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_Y_AXIS_ANGLE: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.STABILITY,
         SignalMetricsNames.MONOTONIC,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_ASPECT_RATIO: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_SKEW: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_STD,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_X_SPEED: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_RMS,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_Y_SPEED: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_RMS,
         SignalMetricsNames.DROPOUT_RATE,
     },
     SignalName.MARKER_ROTATION_SPEED: {
-        SignalMetricsNames.NOISE,
+        SignalMetricsNames.NOISE_RMS,
         SignalMetricsNames.DROPOUT_RATE,
     },
 }

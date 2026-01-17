@@ -52,7 +52,8 @@ class OpticalVelocityControllerV2:
         
         self.previous_detection = None
 
-        self.prepare_rms_of_noise = signal_evaluator.prepare_rms_of_noise()
+        self.prepare_rms_of_noise = signal_evaluator.prepare_noise_rms()
+        self.prepare_std_of_noise = signal_evaluator.prepare_noise_std()
         self.prepare_spectral_density = signal_evaluator.prepare_spectral_density()
         self.prepare_dropout_rate = signal_evaluator.prepare_dropout_rate(expected_dt=16.67)
         self.prepare_sign_stability = signal_evaluator.prepare_sign_stability()
@@ -180,7 +181,8 @@ class OpticalVelocityControllerV2:
         metrics = {}
 
         evaluators = {
-            SignalMetricsNames.NOISE: self.prepare_rms_of_noise,
+            SignalMetricsNames.NOISE_STD: self.prepare_std_of_noise,
+            SignalMetricsNames.NOISE_RMS: self.prepare_rms_of_noise,
             SignalMetricsNames.SPECTRAL_DENSITY: self.prepare_spectral_density,
             SignalMetricsNames.DROPOUT_RATE: self.prepare_dropout_rate,
             SignalMetricsNames.STABILITY: self.prepare_sign_stability,

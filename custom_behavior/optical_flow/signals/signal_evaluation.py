@@ -22,27 +22,51 @@ class SignalEvaluator:
     # 
     # Smaller window → more aggressive jitter detection
     # --------------------------------------------------
-    def prepare_rms_of_noise(self, ema_window=10):
+    #     
+    def prepare_noise_std(self, window: int = 10):
 
-        def rms(signal):
-            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE):
-                raise Exception(f'RMS doesn\'t support {signal.name}')
-            
+        def noise_std(signal):
+            # semantic filter (по enum)
+            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE_STD):
+                raise Exception(f'NOISE_STD doesn\'t support {signal.name}')
+
             self.buffer.update(signal)
             values = np.array(self.buffer.values(signal.name))
 
-            if len(values) < ema_window:
+            if len(values) < window:
                 return None
 
-            ema = np.convolve(
+            # медленный тренд (EMA / SMA)
+            trend = np.convolve(
                 values,
-                np.ones(ema_window) / ema_window,
+                np.ones(window) / window,
                 mode="same"
             )
 
-            return float(np.sqrt(np.mean((values - ema) ** 2)))
+            # локальный шум
+            noise = values - trend
 
-        return rms
+            return float(np.std(noise))
+
+        return noise_std
+
+
+    def prepare_noise_rms(self, window: int = 10):
+
+        def noise_rms(signal):
+            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE_RMS):
+                raise Exception(f'NOISE_RMS doesn\'t support {signal.name}')
+
+            self.buffer.update(signal)
+            values = np.array(self.buffer.values(signal.name))
+
+            if len(values) < window:
+                return None
+
+            return float(np.sqrt(np.mean(values ** 2)))
+
+        return noise_rms
+
 
     # --------------------------------------------------
     # Спектральная плотность (HF энергия)
