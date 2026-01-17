@@ -86,7 +86,7 @@ class OpticalVelocityControllerV2:
 
         current_time_in_ms = int(time.time() * 1000)
 
-        print("Detection before signal conversion: ", detection)
+        # print("Detection before signal conversion: ", detection)
 
         # --- Convert raw detection to signals ---
         signals = [
@@ -103,8 +103,8 @@ class OpticalVelocityControllerV2:
             converters.marker_rotation_speed_signal(rotation_speed, current_time_in_ms),
         ]
 
-        for s in signals:
-            print("Signal:", s)
+        # for s in signals:
+        #     print("Signal:", s)
         
         signals_dict = {
             s.name: s
@@ -120,7 +120,7 @@ class OpticalVelocityControllerV2:
         for signal_name, signal in signals_dict.items():
             evaluated[signal_name] = self.evaluate_signal_metrics(signal)
 
-        print("Evaluated metrics", evaluated)
+        # print("Evaluated metrics", evaluated)
         evaluated_metrics: dict[SignalName, SignalMetricsNames] = converters.evaluated_metrics_to_signal_metrics(evaluated)
 
         # --- Compute signal-level confidence ---
@@ -156,13 +156,30 @@ class OpticalVelocityControllerV2:
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
 
+        print("Signals dictionary", signals_dict)
+
         # --- Generate raw command values per channel ---
         raw_command = {
             Channel.IMAGE_X: signals_dict[SignalName.MARKER_X_POSITION].value,
             Channel.IMAGE_Y: signals_dict[SignalName.MARKER_Y_POSITION].value,
-            Channel.ANGLE: signals_dict[SignalName.MARKER_X_AXIS_ANGLE].value,
-            Channel.OMEGA: signals_dict[SignalName.MARKER_ROTATION_SPEED].value,
+            # Channel.ANGLE: signals_dict[SignalName.MARKER_X_AXIS_ANGLE].value, # TODO: compensate gain in this edge case
+            # Channel.OMEGA: signals_dict[SignalName.MARKER_ROTATION_SPEED].value, # TODO: compensate gain in this edge case
         }
+
+        angle_signal = signals_dict.get(SignalName.MARKER_X_AXIS_ANGLE)
+        omega_signal = signals_dict.get(SignalName.MARKER_ROTATION_SPEED)
+
+        if angle_signal is not None:
+            raw_command[Channel.ANGLE] = angle_signal.value
+
+        if omega_signal is not None:
+            raw_command[Channel.OMEGA] = omega_signal.value
+
+        # TODO: update gain
+        # if ANGLE is missing:
+            # increase gain on IMAGE_X, IMAGE_Y
+            # reduce aggressiveness of OMEGA
+
 
         # --- Apply adaptive gain ---
         scaled_commands: dict = {}

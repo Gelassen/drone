@@ -202,4 +202,17 @@ class ManagingCommand:
     velocity_z: float
     yaw: float
 
+    def __init__(
+        self,
+        velocity_x: float = 0.0,
+        velocity_y: float = 0.0,
+        velocity_z: float = 0.0,
+        yaw: float = 0.0
+    ) -> None:
+        self.velocity_x = velocity_x
+        self.velocity_y = velocity_y
+        self.velocity_z = velocity_z
+        self.yaw = yaw
+
+
 
