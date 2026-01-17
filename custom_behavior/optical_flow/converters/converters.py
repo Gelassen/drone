@@ -1,7 +1,9 @@
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.models.signal_model import (
     Signal,
-    SignalName
+    SignalName,
+    SignalMetrics,
+    SignalMetricsNames
 )
 
 # ---------- центр маркера ----------
@@ -107,3 +109,22 @@ def marker_rotation_speed_signal(omega, ts) -> Signal:
         value=float(omega),
         ts=ts
     )
+
+def evaluated_metrics_to_signal_metrics(
+        evaluated_metrics: dict
+) -> dict[SignalName, SignalMetrics]:
+    
+    result: dict[SignalName, SignalMetrics] = {}
+
+    for signal_enum, metrics in evaluated_metrics.items():
+        result[signal_enum] = SignalMetrics(
+            rms_noise=metrics.get(SignalMetricsNames.NOISE_RMS),
+            std_noise=metrics.get(SignalMetricsNames.NOISE_STD),
+            spectral_density=metrics.get(SignalMetricsNames.SPECTRAL_DENSITY),
+            sign_stability=metrics.get(SignalMetricsNames.STABILITY),
+            monotonic=metrics.get(SignalMetricsNames.MONOTONIC),
+            dropout_rate=metrics.get(SignalMetricsNames.DROPOUT_RATE),
+            latency=metrics.get(SignalMetricsNames.LATENCY),
+        )
+
+    return result

@@ -8,9 +8,13 @@ from custom_behavior.optical_flow.signals.signal_filter import SignalFilter
 
 class SignalEvaluator:
 
-    def __init__(self, buffer):
+    def __init__(
+            self, 
+            buffer: SignalBuffer = SignalBuffer(),
+            signal_filter: SignalFilter = SignalFilter() 
+    ):
         self.buffer = buffer
-        self.signal_filter = SignalFilter()
+        self.signal_filter = signal_filter
         print("SignalEvaluator::init")
 
     # --------------------------------------------------
@@ -27,7 +31,7 @@ class SignalEvaluator:
 
         def noise_std(signal):
             # semantic filter (по enum)
-            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE_STD):
+            if not self.signal_filter.allows(signal, SignalMetricsNames.NOISE_STD):
                 raise Exception(f'NOISE_STD doesn\'t support {signal.name}')
 
             self.buffer.update(signal)
@@ -54,7 +58,7 @@ class SignalEvaluator:
     def prepare_noise_rms(self, window: int = 10):
 
         def noise_rms(signal):
-            if not self.signal_filter.allows(signal.name, SignalMetricsNames.NOISE_RMS):
+            if not self.signal_filter.allows(signal, SignalMetricsNames.NOISE_RMS):
                 raise Exception(f'NOISE_RMS doesn\'t support {signal.name}')
 
             self.buffer.update(signal)

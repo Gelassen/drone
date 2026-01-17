@@ -73,11 +73,42 @@ class SignalMetrics:
     dropout_rate: float
     latency: float
 
+    def __init__(
+        self,
+        rms_noise: float,
+        std_noise: float,
+        spectral_density: float,
+        sign_stability: float,
+        monotonic: float,
+        dropout_rate: float,
+        latency: float,
+    ) -> None:
+        self.rms_noise = rms_noise
+        self.std_noise = std_noise
+        self.spectral_density = spectral_density
+        self.sign_stability = sign_stability
+        self.monotonic = monotonic
+        self.dropout_rate = dropout_rate
+        self.latency = latency
+
+
 class SignalConfidence:
     signal_name: SignalName
     value: float          # 0..1
     ts: int
     components: dict      # для дебага
+
+    def __init__(
+        self,
+        signal_name: SignalName,
+        value: float,
+        ts: int,
+        components: dict,
+    ) -> None:
+        self.signal_name = signal_name
+        self.value = value
+        self.ts = ts
+        self.components = components
 
 class Channel(Enum):
     IMAGE_X = "image_x"      # cx → roll
@@ -90,6 +121,19 @@ class ChannelConfidence:
     value: float          # 0..1
     signals: dict         # SignalName → SignalConfidence
     ts: int
+
+    def __init__(
+        self,
+        channel: Channel,
+        value: float,
+        signals: dict,
+        ts: int,
+    ) -> None:
+        self.channel = channel
+        self.value = value
+        self.signals = signals
+        self.ts = ts
+
 
 class FunctionType(Enum):
     LINEAR = "linear"

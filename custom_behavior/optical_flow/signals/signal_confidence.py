@@ -32,6 +32,9 @@ class ConfidenceLayer:
         })
 
     def compute(self, metrics: SignalMetrics) -> float:
+        if not isinstance(metrics, SignalMetrics):
+            raise TypeError(f"Function input argument is not a {SignalMetrics}. Did you pass the right data? {type(metrics)}")
+        
         weighted_scores = []
 
         # Noise RMS

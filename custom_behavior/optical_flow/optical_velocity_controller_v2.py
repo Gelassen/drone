@@ -20,7 +20,8 @@ from custom_behavior.optical_flow.models.signal_model import (
     CHANNEL_TO_SIGNALS,
     Channel,
     SignalName,
-    ManagingCommand
+    ManagingCommand,
+    SignalMetrics
 )
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.converters import converters
@@ -112,14 +113,19 @@ class OpticalVelocityControllerV2:
         }
 
 
+        # for s_name, s in signals_dict.items():
+            # print("Signal-filtered:", s)
         # --- Evaluate metrics ---
         evaluated = {}
-        for signal in signals:
-            evaluated[signal.name] = self.evaluate_signal_metrics(signal)
+        for signal_name, signal in signals_dict.items():
+            evaluated[signal_name] = self.evaluate_signal_metrics(signal)
+
+        print("Evaluated metrics", evaluated)
+        evaluated_metrics: dict[SignalName, SignalMetricsNames] = converters.evaluated_metrics_to_signal_metrics(evaluated)
 
         # --- Compute signal-level confidence ---
         signal_confidences: dict = {}
-        for signal_name, metrics in evaluated.items():
+        for signal_name, metrics in evaluated_metrics.items():
             conf_value = self.confidence_layer.compute(metrics)
             signal_confidences[signal_name] = SignalConfidence(
                 signal_name=signal_name,
@@ -144,7 +150,7 @@ class OpticalVelocityControllerV2:
         # --- Gating ---
         gated_channels: dict = {}
         for channel, ch_conf in channel_confidences.items():
-            if self.signal_gate.update(channel=channel, confidence=ch_conf.value, ts=current_time_in_ms):
+            if self.signal_gate.update(channel_conf=ch_conf):
                 gated_channels[channel] = ch_conf
 
         # --- Arbitration ---
