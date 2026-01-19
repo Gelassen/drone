@@ -93,6 +93,7 @@ class AprilTagDetector:
                     best = TargetDetection(
                             cx=cx,
                             cy=cy,
+                            px_size=side,
                             side=side,
                             source="tag",
                             corners=corners,

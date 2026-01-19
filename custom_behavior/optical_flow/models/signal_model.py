@@ -44,16 +44,47 @@ class Axis:
     x_angle: float
     y_angle: float
 
+    def __init__(
+        self,
+        x_axis: float,
+        y_axis: float,
+        x_angle: float,
+        y_angle: float
+    ):
+        self.x_axis = x_axis
+        self.y_axis = y_axis
+        self.x_angle = x_angle
+        self.y_angle = y_angle
+
 class Aspect:
     width: float
     height: float
     aspect: float
 
+    def __init__(self, width: float, height: float, aspect: float) -> None:
+        self.width = width
+        self.height = height
+        self.aspect = aspect
+
+
 class Speed:
-    vx: float 
+    vx: float
     vy: float
-    rotation_speed: float # omega
+    rotation_speed: float  # omega
     prev_marker: TargetDetection
+
+    def __init__(
+        self,
+        vx: float,
+        vy: float,
+        rotation_speed: float,
+        prev_marker: TargetDetection,
+    ) -> None:
+        self.vx = vx
+        self.vy = vy
+        self.rotation_speed = rotation_speed
+        self.prev_marker = prev_marker
+
 
 class SignalMetricsNames(Enum):
     NOISE_STD = "noise_std"

@@ -27,10 +27,10 @@ class SignalEvaluator:
     # Smaller window → more aggressive jitter detection
     # --------------------------------------------------
     #     
-    def prepare_noise_std(self, window: int = 10):
+    def prepare_noise_std(self, window: int = 10, is_normalized: bool = True):
 
         def noise_std(signal):
-            # semantic filter (по enum)
+            # semantic filter
             if not self.signal_filter.allows(signal, SignalMetricsNames.NOISE_STD):
                 raise Exception(f'NOISE_STD doesn\'t support {signal.name}')
 
@@ -41,21 +41,25 @@ class SignalEvaluator:
                 return None
 
             # медленный тренд (EMA / SMA)
-            trend = np.convolve(
-                values,
-                np.ones(window) / window,
-                mode="same"
-            )
-
+            trend = np.convolve(values, np.ones(window) / window, mode="same")
             # локальный шум
             noise = values - trend
+            std_val = float(np.std(noise))
 
-            return float(np.std(noise))
+            # normalize if requested
+            if is_normalized:
+                # example simple normalization: divide by max observed value
+                max_val = np.max(np.abs(values))
+                if max_val > 0:
+                    std_val /= max_val
+                else:
+                    std_val = 0.0
+
+            return std_val
 
         return noise_std
 
-
-    def prepare_noise_rms(self, window: int = 10):
+    def prepare_noise_rms(self, window: int = 10, is_normalized: bool = True):
 
         def noise_rms(signal):
             if not self.signal_filter.allows(signal, SignalMetricsNames.NOISE_RMS):
@@ -67,7 +71,17 @@ class SignalEvaluator:
             if len(values) < window:
                 return None
 
-            return float(np.sqrt(np.mean(values ** 2)))
+            rms_val = float(np.sqrt(np.mean(values ** 2)))
+
+            # normalize if requested
+            if is_normalized:
+                max_val = np.max(np.abs(values))
+                if max_val > 0:
+                    rms_val /= max_val
+                else:
+                    rms_val = 0.0
+
+            return rms_val
 
         return noise_rms
 
