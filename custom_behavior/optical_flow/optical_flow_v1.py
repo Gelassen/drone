@@ -4,6 +4,7 @@ import time
 import cv2
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
+from pathlib import Path
 
 from custom_behavior.optical_flow.april_tag_detector import AprilTagDetector
 from custom_behavior.optical_flow.drone_hardware import DroneHardware
@@ -11,6 +12,7 @@ from custom_behavior.optical_flow.optical_velocity_controller_v2 import OpticalV
 from custom_behavior.optical_flow.target_tracker import TargetTracker
 from custom_behavior.optical_flow.video_source import AsyncVideoSource
 from custom_behavior.optical_flow.models.signal_model import ManagingCommand
+from custom_behavior.utils.telemetry_logger import TelemetryLogger
 
 class AprilTagOpticalController:
     

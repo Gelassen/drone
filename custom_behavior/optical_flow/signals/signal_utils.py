@@ -80,8 +80,6 @@ class SignalsUtil:
             prev_marker = marker
             return None
 
-        print("SignalUtils::detect_target_speed()", marker)
-        print("SignalUtils::detect_target_speed()", prev_marker)
         dt = marker.timestamp - prev_marker.timestamp
         if dt <= 0:
             return None

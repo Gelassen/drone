@@ -9,6 +9,8 @@ from custom_behavior.optical_flow.signals.signal_utils import SignalsUtil
 from custom_behavior.optical_flow.signals.signal_filter import SignalFilter
 from custom_behavior.optical_flow.signals.signal_buffer import SignalBuffer
 from custom_behavior.optical_flow.signals.signal_command_assembler import CommandAssembler
+from custom_behavior.optical_flow.models.models import TelemetryEvents
+
 
 from custom_behavior.optical_flow.models.signal_model import (
     Axis,
@@ -25,6 +27,7 @@ from custom_behavior.optical_flow.models.signal_model import (
 )
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.converters import converters
+from custom_behavior.utils.telemetry_logger import telemetry
 
 
 class OpticalVelocityControllerV2:
@@ -51,7 +54,7 @@ class OpticalVelocityControllerV2:
         self.signal_evaluator = signal_evaluator
         self.signal_util = signal_util
         
-        self.previous_detection = None
+        self.previous_detection: TargetDetection = None
 
         self.prepare_rms_of_noise = signal_evaluator.prepare_noise_rms()
         self.prepare_std_of_noise = signal_evaluator.prepare_noise_std()
@@ -69,8 +72,6 @@ class OpticalVelocityControllerV2:
             self.previous_detection = detection
             return {}
 
-        print("Detection", detection)
-
         # --- Detect features ---
         axis: Axis = self.signal_util.detect_axis(detection)
         aspect: Aspect = self.signal_util.detect_aspect(detection)
@@ -85,8 +86,6 @@ class OpticalVelocityControllerV2:
         )
 
         current_time_in_ms = int(time.time() * 1000)
-
-        # print("Detection before signal conversion: ", detection)
 
         # --- Convert raw detection to signals ---
         signals = [
@@ -103,24 +102,17 @@ class OpticalVelocityControllerV2:
             converters.marker_rotation_speed_signal(rotation_speed, current_time_in_ms),
         ]
 
-        # for s in signals:
-        #     print("Signal:", s)
-        
         signals_dict = {
             s.name: s
             for s in signals
             if s is not None
         }
 
-
-        # for s_name, s in signals_dict.items():
-            # print("Signal-filtered:", s)
         # --- Evaluate metrics ---
         evaluated = {}
         for signal_name, signal in signals_dict.items():
             evaluated[signal_name] = self.evaluate_signal_metrics(signal)
 
-        # print("Evaluated metrics", evaluated)
         evaluated_metrics: dict[SignalName, SignalMetricsNames] = converters.evaluated_metrics_to_signal_metrics(evaluated)
 
         # --- Compute signal-level confidence ---
@@ -156,8 +148,6 @@ class OpticalVelocityControllerV2:
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
 
-        print("Signals dictionary", signals_dict)
-
         # --- Generate raw command values per channel ---
         raw_command = {
             Channel.IMAGE_X: signals_dict[SignalName.MARKER_X_POSITION].value,
@@ -180,7 +170,6 @@ class OpticalVelocityControllerV2:
             # increase gain on IMAGE_X, IMAGE_Y
             # reduce aggressiveness of OMEGA
 
-
         # --- Apply adaptive gain ---
         scaled_commands: dict = {}
         if command:
@@ -193,10 +182,32 @@ class OpticalVelocityControllerV2:
                 gain = self.scheduler.gain(gated_channels[command].value)
                 scaled_commands[command] = raw_command[command] * gain
 
+        telemetry.emit(
+            event=TelemetryEvents.APRIL_TAG_DETECTION.value,
+            cx=detection.cx,
+            cy=detection.cy,
+            px_size=detection.px_size,
+            source=detection.source,
+            side=detection.side,
+            corners=detection.corners.tolist() if detection.corners is not None else None,
+            homography=detection.homography.tolist() if detection.homography is not None else None,
+            timestamp=detection.timestamp
+        )
+
+        print("scaled_commands", scaled_commands)
+
         # --- Update previous detection ---
         self.previous_detection = detection
 
         managing_command: ManagingCommand = self.command_assembler.signals_to_command(scaled_commands)
+
+        telemetry.emit(
+            event=TelemetryEvents.MANAGING_COMMAND.value,
+            velocity_x=managing_command.velocity_x,
+            velocity_y=managing_command.velocity_y,
+            velocity_z=managing_command.velocity_z,
+            yaw=managing_command.yaw
+        )
 
         return managing_command
 
