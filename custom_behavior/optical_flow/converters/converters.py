@@ -1,9 +1,13 @@
+from enum import Enum
+
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.models.signal_model import (
     Signal,
     SignalName,
     SignalMetrics,
-    SignalMetricsNames
+    SignalMetricsNames,
+    ChannelConfidence,
+    SignalConfidence
 )
 
 # ---------- центр маркера ----------
@@ -128,3 +132,15 @@ def evaluated_metrics_to_signal_metrics(
         )
 
     return result
+
+def confidence_signals_to_serialized_signals(data: dict[SignalMetricsNames, ChannelConfidence]):
+    serialized_signals = {}
+    for key, item in data.items():
+        key_str = key.name if isinstance(key, Enum) else str(key)
+
+        if isinstance(item, SignalConfidence):
+            serialized_signals[key_str] = item.to_dict()
+        else:
+            serialized_signals[key_str] = item
+
+    return serialized_signals

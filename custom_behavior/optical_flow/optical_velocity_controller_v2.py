@@ -1,4 +1,7 @@
 import time
+import json
+
+from enum import Enum
 
 from custom_behavior.optical_flow.signals.signal_adaptive_gain_scheduler import AdaptiveGainScheduler
 from custom_behavior.optical_flow.signals.signal_arbitrator import Arbitrator
@@ -28,7 +31,6 @@ from custom_behavior.optical_flow.models.signal_model import (
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.converters import converters
 from custom_behavior.utils.telemetry_logger import telemetry
-
 
 class OpticalVelocityControllerV2:
 
@@ -71,6 +73,18 @@ class OpticalVelocityControllerV2:
             print("OpticalVelocityControllerV2::compute - collect 1st marker, skip analysis at this step")
             self.previous_detection = detection
             return {}
+        
+        telemetry.emit(
+            event=TelemetryEvents.APRIL_TAG_DETECTION.name,
+            cx=detection.cx,
+            cy=detection.cy,
+            px_size=detection.px_size,
+            source=detection.source,
+            side=detection.side,
+            corners=detection.corners.tolist() if detection.corners is not None else None,
+            homography=detection.homography.tolist() if detection.homography is not None else None,
+            timestamp=detection.timestamp
+        )
 
         # --- Detect features ---
         axis: Axis = self.signal_util.detect_axis(detection)
@@ -115,6 +129,9 @@ class OpticalVelocityControllerV2:
 
         evaluated_metrics: dict[SignalName, SignalMetricsNames] = converters.evaluated_metrics_to_signal_metrics(evaluated)
 
+        # print("evaluated_metrics", evaluated_metrics)
+        self._debug_log_evaluated_metrics(evaluated_metrics)
+
         # --- Compute signal-level confidence ---
         signal_confidences: dict = {}
         for signal_name, metrics in evaluated_metrics.items():
@@ -125,11 +142,14 @@ class OpticalVelocityControllerV2:
                 ts=current_time_in_ms,
                 components=metrics.__dict__  # optional: debug info
             )
+        # print("signal_confidences", signal_confidences)
+        self._debug_log_signal_confidences(signal_confidences)
 
         # --- Compute channel-level confidence ---
-        channel_confidences: dict = {}
+        channel_confidences: dict[SignalMetricsNames, ChannelConfidence] = {}
         for channel, required_signals in CHANNEL_TO_SIGNALS.items():
             present_signals = {s: signal_confidences[s] for s in required_signals if s in signal_confidences}
+            print("present_signals", present_signals)
             if present_signals:
                 min_conf = min(s.value for s in present_signals.values())
                 channel_confidences[channel] = ChannelConfidence(
@@ -138,12 +158,17 @@ class OpticalVelocityControllerV2:
                     signals=present_signals,
                     ts=current_time_in_ms
                 )
+        print("channel_confidences", channel_confidences)
+        self._debug_log_channel_confidences(channel_confidences)
 
         # --- Gating ---
         gated_channels: dict = {}
         for channel, ch_conf in channel_confidences.items():
             if self.signal_gate.update(channel_conf=ch_conf):
                 gated_channels[channel] = ch_conf
+
+        # print("gated_channels", gated_channels)
+        self._debug_log_gated_channel(gated_channels)
 
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
@@ -165,6 +190,9 @@ class OpticalVelocityControllerV2:
         if omega_signal is not None:
             raw_command[Channel.OMEGA] = omega_signal.value
 
+        print("raw commands", raw_command)
+        self._debug_log_raw_command(raw_command)
+
         # TODO: update gain
         # if ANGLE is missing:
             # increase gain on IMAGE_X, IMAGE_Y
@@ -173,28 +201,26 @@ class OpticalVelocityControllerV2:
         # --- Apply adaptive gain ---
         scaled_commands: dict = {}
         if command:
+            print("raw_command, part I")
             if isinstance(command, tuple):
+                print("raw_command, part II", type(command))
                 # e.g., IMAGE_X & IMAGE_Y
                 for ch in command:
                     gain = self.scheduler.gain(gated_channels[ch].value)
+                    print("raw_command[ch] ", raw_command[ch])
+                    print("gain", gain)
+                    self._debug_log_raw_command_gain(ch, raw_command[ch], gain)
                     scaled_commands[ch] = raw_command[ch] * gain
             else:
                 gain = self.scheduler.gain(gated_channels[command].value)
+                print("raw_command[command] ", raw_command[command])
+                print("gain", gain)
                 scaled_commands[command] = raw_command[command] * gain
-
-        telemetry.emit(
-            event=TelemetryEvents.APRIL_TAG_DETECTION.value,
-            cx=detection.cx,
-            cy=detection.cy,
-            px_size=detection.px_size,
-            source=detection.source,
-            side=detection.side,
-            corners=detection.corners.tolist() if detection.corners is not None else None,
-            homography=detection.homography.tolist() if detection.homography is not None else None,
-            timestamp=detection.timestamp
-        )
+        else:
+            print("No command has been found!!!")
 
         print("scaled_commands", scaled_commands)
+        self._debug_log_scaled_command(scaled_commands)
 
         # --- Update previous detection ---
         self.previous_detection = detection
@@ -202,7 +228,7 @@ class OpticalVelocityControllerV2:
         managing_command: ManagingCommand = self.command_assembler.signals_to_command(scaled_commands)
 
         telemetry.emit(
-            event=TelemetryEvents.MANAGING_COMMAND.value,
+            event=TelemetryEvents.MANAGING_COMMAND.name,
             velocity_x=managing_command.velocity_x,
             velocity_y=managing_command.velocity_y,
             velocity_z=managing_command.velocity_z,
@@ -232,3 +258,73 @@ class OpticalVelocityControllerV2:
 
         return metrics
 
+    def _debug_log_evaluated_metrics(self, metrics: dict[SignalName, SignalMetricsNames]):
+        for signal_name, signal_metrics in metrics.items():
+            telemetry.emit(
+                event=TelemetryEvents.SIGNAL_METRICS.name,
+                signal_name=signal_name.value,
+                rms_noise=signal_metrics.rms_noise, 
+                std_noise=signal_metrics.std_noise, 
+                spectral_density=signal_metrics.spectral_density,
+                sign_stability=signal_metrics.sign_stability,
+                monotonic=signal_metrics.monotonic,
+                dropout_rate=signal_metrics.dropout_rate,
+                latency=signal_metrics.latency
+            )
+
+    def _debug_log_signal_confidences(self, signal_conf):
+        for signal_name, confidences in signal_conf.items():
+            telemetry.emit(
+                event=TelemetryEvents.SIGNAL_CONFIDENCE.name,
+                signal_name=signal_name.value,
+                value=confidences.value,
+                ts=confidences.ts,
+                components=json.dumps(confidences.components)
+            )
+
+    def _debug_log_channel_confidences(self, channel_conf: dict[SignalMetricsNames, ChannelConfidence]):
+        for signal_name, channel_confidences in channel_conf.items():
+            # print("channel_confidences.signals", channel_confidences)
+            # for key, item in channel_confidences.signals.items():
+                # print(key.name if isinstance(key, Enum) else key, item)
+            serialized_signals = converters.confidence_signals_to_serialized_signals(channel_confidences.signals)
+            
+            telemetry.emit(
+                event=TelemetryEvents.CHANNEL_CONFIDENCE.name,
+                channel=signal_name.value,
+                value=channel_confidences.value,
+                signals=json.dumps(serialized_signals),
+                ts=channel_confidences.ts
+            )
+
+    def _debug_log_gated_channel(self, gated_channels: dict[Channel, ChannelConfidence]):
+        for channel, channel_confidence in gated_channels:
+            telemetry.emit(
+                event=TelemetryEvents.CHANNEL_CONFIDENCE.name,
+                channel=channel.name,
+                channel_confidence=json.dumps(channel_confidence.to_dict())
+            )
+    
+    def _debug_log_raw_command(self, raw_command: dict[Channel, any]):
+        for channel, data in raw_command.items():
+            telemetry.emit(
+                event=TelemetryEvents.RAW_COMMAND.name,
+                channel=channel.name,
+                value=data
+            )
+
+    def _debug_log_raw_command_gain(self, channel: Channel, value: any, gain: any):
+        telemetry.emit(
+            event=TelemetryEvents.RAW_COMMAND_GAIN.name,
+            channel=channel.name,
+            value=value,
+            gain=gain
+        )
+
+    def _debug_log_scaled_command(self, scaled_commands: dict[Channel, any]):
+        for channel, command_value in scaled_commands.items():
+            telemetry.emit(
+                event=TelemetryEvents.SCALED_COMMAND.name,
+                channel=channel,
+                value=command_value
+            )

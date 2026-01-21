@@ -141,6 +141,30 @@ class SignalConfidence:
         self.ts = ts
         self.components = components
 
+    def to_dict(self) -> dict:
+        return {
+            "signal": self.signal_name.name,
+            "value": self.value,
+            "ts": self.ts,
+            "components": self._serialize_components(self.components),
+        }
+
+    @staticmethod
+    def _serialize_components(components: dict) -> dict:
+        out = {}
+        for k, v in components.items():
+            key = k.name if isinstance(k, Enum) else str(k)
+
+            if isinstance(v, Enum):
+                out[key] = v.name
+            elif hasattr(v, "to_dict"):
+                out[key] = v.to_dict()
+            elif isinstance(v, (int, float, str, bool)) or v is None:
+                out[key] = v
+            else:
+                out[key] = str(v)   # fallback для дебага
+        return out
+
 class Channel(Enum):
     IMAGE_X = "image_x"      # cx → roll
     IMAGE_Y = "image_y"      # cy → pitch
@@ -164,6 +188,30 @@ class ChannelConfidence:
         self.value = value
         self.signals = signals
         self.ts = ts
+
+    def to_dict(self) -> dict:
+        return {
+            "channel": self.channel.name if isinstance(self.channel, Enum) else str(self.channel),
+            "value": self.value,
+            "ts": self.ts,
+            "signals": self._serialize_signals(self.signals),
+        }
+
+    @staticmethod
+    def _serialize_signals(signals: dict) -> dict:
+        out = {}
+
+        for signal_name, confidence in signals.items():
+            key = signal_name.name if isinstance(signal_name, Enum) else str(signal_name)
+
+            if hasattr(confidence, "to_dict"):
+                out[key] = confidence.to_dict()
+            elif isinstance(confidence, (int, float, str, bool)) or confidence is None:
+                out[key] = confidence
+            else:
+                out[key] = str(confidence)  # fallback только для дебага
+
+        return out
 
 
 class FunctionType(Enum):
