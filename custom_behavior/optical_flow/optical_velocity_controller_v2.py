@@ -209,12 +209,13 @@ class OpticalVelocityControllerV2:
                     gain = self.scheduler.gain(gated_channels[ch].value)
                     print("raw_command[ch] ", raw_command[ch])
                     print("gain", gain)
-                    self._debug_log_raw_command_gain(ch, raw_command[ch], gain)
+                    self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-I")
                     scaled_commands[ch] = raw_command[ch] * gain
             else:
                 gain = self.scheduler.gain(gated_channels[command].value)
                 print("raw_command[command] ", raw_command[command])
                 print("gain", gain)
+                self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-II")
                 scaled_commands[command] = raw_command[command] * gain
         else:
             print("No command has been found!!!")
@@ -313,11 +314,17 @@ class OpticalVelocityControllerV2:
                 value=data
             )
 
-    def _debug_log_raw_command_gain(self, channel: Channel, value: any, gain: any):
+    def _debug_log_raw_command_gain(self, 
+                                    channel: Channel, 
+                                    value: any, 
+                                    gain: any,
+                                    type: str
+                                ):
         telemetry.emit(
             event=TelemetryEvents.RAW_COMMAND_GAIN.name,
             channel=channel.name,
             value=value,
+            type=type,
             gain=gain
         )
 
