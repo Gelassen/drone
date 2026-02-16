@@ -30,7 +30,7 @@ $ git submodule update --init --recursive
 $ Tools/environment_install/install-prereqs-ubuntu.sh -y
 $ . ~/.profile
 
-$ wget https://github.com/mavlink/qgroundcontrol/releases/download/latest/QGroundControl.AppImage
+$ wget https://github.com/mavlink/qgroundcontrol/releases/download/v5.0.8/QGroundControl-x86_64.AppImage
 $ chmod +x QGroundControl.AppImage
 ```
 
@@ -46,6 +46,15 @@ $ sudo apt-get update
 $ sudo apt-get install gz-jetty
 
 $ cd ~
+$ sudo apt update
+$ sudo apt install libgz-sim8-dev rapidjson-dev
+$ sudo apt install libopencv-dev \
+  libgstreamer1.0-dev \
+  libgstreamer-plugins-base1.0-dev \
+  gstreamer1.0-plugins-bad \
+  gstreamer1.0-libav \
+  gstreamer1.0-gl
+
 $ git clone https://github.com/ArduPilot/ardupilot_gazebo.git
 $ cd ardupilot_gazebo
 $ mkdir build && cd build

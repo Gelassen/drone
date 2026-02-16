@@ -1,6 +1,7 @@
 # dependencies.py
 from .april_tag_detector import AprilTagDetector
-from .drone_hardware import MAVSDKHardware  # реальный hardware интерфейс
+# from .drone_hardware import MAVSDKHardware  # реальный hardware интерфейс
+from .drone_hardware import DroneHardware
 
 def provide_detector():
     """Возвращает детектор AprilTag"""
@@ -8,4 +9,4 @@ def provide_detector():
 
 def provide_hardware():
     """Возвращает реализацию интерфейса аппаратуры (MAVSDK)"""
-    return MAVSDKHardware()
+    return DroneHardware()

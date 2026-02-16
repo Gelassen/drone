@@ -111,3 +111,4 @@ mav.parm
 mav.tlog
 mav.tlog.raw
 terrain/
+ardupilot/*

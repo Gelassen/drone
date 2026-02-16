@@ -37,7 +37,7 @@ echo "Запуск ArduCopter SITL..."
 gnome-terminal -- bash -c "
 cd $ARDUPILOT_PATH/Tools/autotest &&
 source $VENV_PATH/bin/activate &&
-python3 sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console 
+python3 sim_vehicle.py -v ArduCopter -f gazebo-iris --model JSON --console --out udp:127.0.0.1:14550
 exec bash
 "
 
