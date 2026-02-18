@@ -1,18 +1,16 @@
 from typing import Dict
 from custom_behavior.optical_flow.models.signal_model import Channel, ChannelConfidence
-
+from custom_behavior.optical_flow.models.signal_model import SignalGateThresholds
 
 class SignalGate:
 
     def __init__(
         self,
-        enable_threshold: float = 0.65,
-        disable_threshold: float = 0.45,
-        min_confidence_time_ms: int = 100
+        config: SignalGateThresholds
     ):
-        self.enable_th = enable_threshold
-        self.disable_th = disable_threshold
-        self.min_time = min_confidence_time_ms
+        self.enable_th = config.enable_threshold
+        self.disable_th = config.disable_threshold
+        self.min_time = config.min_confidence_time_ms
 
         # Channel → enabled / disabled
         self.state: Dict[Channel, bool] = {}

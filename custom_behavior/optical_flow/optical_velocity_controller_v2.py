@@ -26,7 +26,10 @@ from custom_behavior.optical_flow.models.signal_model import (
     Channel,
     SignalName,
     ManagingCommand,
-    SignalMetrics
+    SignalMetrics,
+    ArbitratorThresholds,
+    ArbitratorConfig,
+    SignalGateConfig
 )
 from custom_behavior.optical_flow.target_detection import TargetDetection
 from custom_behavior.optical_flow.converters import converters
@@ -41,8 +44,8 @@ class OpticalVelocityControllerV2:
     def __init__(
             self,
             scheduler = AdaptiveGainScheduler(min_conf=0.35, max_conf=0.75), # TODO: tune me
-            arbitrator = Arbitrator(),
-            signal_gate = SignalGate(),
+            arbitrator = Arbitrator(config=ArbitratorConfig.moderate()),
+            signal_gate = SignalGate(config=SignalGateConfig.moderate()),
             confidence_layer = ConfidenceLayer.with_default_weights(),
             signal_evaluator = SignalEvaluator(SignalBuffer()),
             signal_util = SignalsUtil(),

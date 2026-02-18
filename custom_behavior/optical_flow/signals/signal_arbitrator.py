@@ -1,16 +1,15 @@
 from custom_behavior.optical_flow.models.signal_model import Channel, ChannelConfidence
+from custom_behavior.optical_flow.models.signal_model import ArbitratorThresholds
 
 class Arbitrator:
 
     def __init__(
         self,
-        min_image_conf=0.6,
-        min_angle_conf=0.55,
-        min_omega_conf=0.5
+        config: ArbitratorThresholds
     ):
-        self.min_image_conf = min_image_conf
-        self.min_angle_conf = min_angle_conf
-        self.min_omega_conf = min_omega_conf
+        self.min_image_conf = config.min_image_conf
+        self.min_angle_conf = config.min_angle_conf
+        self.min_omega_conf = config.min_omega_conf
 
     def select(self, channels: dict[Channel, ChannelConfidence]) -> Channel:
         cx = channels.get(Channel.IMAGE_X)

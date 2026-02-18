@@ -1,4 +1,5 @@
 from enum import Enum
+from dataclasses import dataclass
 from custom_behavior.optical_flow.target_detection import TargetDetection
 
 class SignalName(Enum):
@@ -66,7 +67,6 @@ class Aspect:
         self.height = height
         self.aspect = aspect
 
-
 class Speed:
     vx: float
     vy: float
@@ -84,7 +84,6 @@ class Speed:
         self.vy = vy
         self.rotation_speed = rotation_speed
         self.prev_marker = prev_marker
-
 
 class SignalMetricsNames(Enum):
     NOISE_STD = "noise_std"
@@ -121,7 +120,6 @@ class SignalMetrics:
         self.monotonic = monotonic
         self.dropout_rate = dropout_rate
         self.latency = latency
-
 
 class SignalConfidence:
     signal_name: SignalName
@@ -213,7 +211,6 @@ class ChannelConfidence:
 
         return out
 
-
 class FunctionType(Enum):
     LINEAR = "linear"
     QUADRATIC = "quadratic"
@@ -293,5 +290,70 @@ class ManagingCommand:
         self.velocity_z = velocity_z
         self.yaw = yaw
 
+@dataclass(frozen=True)
+class ArbitratorThresholds:
+    min_image_conf: float
+    min_angle_conf: float
+    min_omega_conf: float
+
+class ArbitratorConfig:
+    """Predefined threshold sets for the Arbitrator."""
+
+    @staticmethod
+    def aggressive() -> ArbitratorThresholds:
+        return ArbitratorThresholds(
+            min_image_conf=0.6,
+            min_angle_conf=0.55,
+            min_omega_conf=0.5
+
+        )
+    
+    @staticmethod
+    def moderate() -> ArbitratorThresholds:
+        return ArbitratorThresholds(
+            min_image_conf=0.5,
+            min_angle_conf=0.45,
+            min_omega_conf=0.4
+        )
+
+    @staticmethod
+    def loose() -> ArbitratorThresholds:
+        return ArbitratorThresholds(
+            min_image_conf=0.4,
+            min_angle_conf=0.34,
+            min_omega_conf=0.3
+        )
 
 
+@dataclass(frozen=True)
+class SignalGateThresholds:
+    enable_threshold: float
+    disable_threshold: float
+    min_confidence_time_ms: int
+
+class SignalGateConfig:
+    """Predefined threshold sets for SignalGate."""
+
+    @staticmethod
+    def aggressive() -> SignalGateThresholds:
+        return SignalGateThresholds(
+            enable_threshold=0.65,
+            disable_threshold=0.45,
+            min_confidence_time_ms=100
+        )
+
+    @staticmethod
+    def moderate() -> SignalGateThresholds:
+        return SignalGateThresholds(
+            enable_threshold=0.55,
+            disable_threshold=0.40,
+            min_confidence_time_ms=50
+        )
+
+    @staticmethod
+    def loose() -> SignalGateThresholds:
+        return SignalGateThresholds(
+            enable_threshold=0.5,
+            disable_threshold=0.3,
+            min_confidence_time_ms=35
+        )
