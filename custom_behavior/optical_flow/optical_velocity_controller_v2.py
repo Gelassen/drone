@@ -211,12 +211,24 @@ class OpticalVelocityControllerV2:
                     print("gain", gain)
                     self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-I")
                     scaled_commands[ch] = raw_command[ch] * gain
+                    self._debug_log_scale_debug(
+                        channel=ch,
+                        raw_command = raw_command[ch],
+                        scaled_commands = {ch: scaled_commands[ch]},
+                        gain=gain
+                    )
             else:
                 gain = self.scheduler.gain(gated_channels[command].value)
                 print("raw_command[command] ", raw_command[command])
                 print("gain", gain)
                 self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-II")
                 scaled_commands[command] = raw_command[command] * gain
+                self._debug_log_scale_debug(
+                        channel=ch,
+                        raw_command = raw_command[ch],
+                        scaled_commands = {ch: scaled_commands[ch]},
+                        gain=gain
+                    )
         else:
             print("No command has been found!!!")
 
@@ -301,11 +313,11 @@ class OpticalVelocityControllerV2:
     def _debug_log_gated_channel(self, gated_channels: dict[Channel, ChannelConfidence]):
         for channel, channel_confidence in gated_channels:
             telemetry.emit(
-                event=TelemetryEvents.CHANNEL_CONFIDENCE.name,
+                event=TelemetryEvents.GATED_CHANNEL_CONFIDENCE.name,
                 channel=channel.name,
                 channel_confidence=json.dumps(channel_confidence.to_dict())
             )
-    
+  
     def _debug_log_raw_command(self, raw_command: dict[Channel, any]):
         for channel, data in raw_command.items():
             telemetry.emit(
@@ -335,3 +347,19 @@ class OpticalVelocityControllerV2:
                 channel=channel,
                 value=command_value
             )
+
+    def _debug_log_scale_debug(self,
+        channel: Channel,
+        raw_command_value: any, 
+        scaled_commands: dict[Channel, any],
+        gain: any
+    ):
+        scaled_value = scaled_commands[channel]
+
+        telemetry.emit(
+            event=TelemetryEvents.SCALE_DEBUG.name,
+            channel=channel.name,
+            raw=raw_command_value,
+            gain=gain,
+            scaled=scaled_value,
+        )

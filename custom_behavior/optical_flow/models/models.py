@@ -7,5 +7,7 @@ class TelemetryEvents(Enum):
     SIGNAL_CONFIDENCE = auto(),
     SIGNAL_METRICS = auto(),
     CHANNEL_CONFIDENCE = auto(),
+    GATED_CHANNEL_CONFIDENCE = auto(),
+    SCALE_DEBUG = auto(),
     RAW_COMMAND = auto(),
     RAW_COMMAND_GAIN = auto()
