@@ -14,17 +14,15 @@ class Arbitrator:
         self.min_omega_conf = config.min_omega_conf
         
         # порог для fallback-режима — немного ниже основного, чтобы не пропускать совсем слабый сигнал
-        self.fallback_image_conf = self.min_image_conf * 0.9   # например 0.5 → 0.45
+        self.fallback_image_conf = self.fallback_image_conf#self.min_image_conf * 0.6 #0.9   # например 0.5 → 0.45
 
     def select(self, channels: dict[Channel, ChannelConfidence]) -> Channel | tuple[Channel, Channel] | None:
         """
-        Возвращает:
-        - (IMAGE_X, IMAGE_Y)       — оба канала прошли gating и достаточно уверены
-        - IMAGE_X                  — только X прошёл, Y нет или слабый
-        - IMAGE_Y                  — только Y прошёл, X нет или слабый
-        - ANGLE                    — angle прошёл
-        - OMEGA                    — omega прошёл
-        - None                     — HOLD (ничего не выбрано)
+        Логика выбора каналов:
+          1. Сначала пытаемся взять оба IMAGE_X + IMAGE_Y (самый точный режим)
+          2. Если оба не проходят — пробуем fallback на один из них (если достаточно уверенности)
+          3. Если и fallback не прошёл — смотрим ANGLE или OMEGA
+          4. Иначе → None (HOLD)
         """
         cx = channels.get(Channel.IMAGE_X)
         cy = channels.get(Channel.IMAGE_Y)
@@ -34,7 +32,7 @@ class Arbitrator:
         decision = None
 
         # ───────────────────────────────────────────────────────────────
-        # 1. Основной режим — оба изображения канала достаточно уверены
+        # 1. Основной приоритет — оба канала позиции одновременно
         # ───────────────────────────────────────────────────────────────
         image_ok_both = (
             cx is not None and
@@ -44,35 +42,39 @@ class Arbitrator:
 
         if image_ok_both:
             decision = (Channel.IMAGE_X, Channel.IMAGE_Y)
-            # telemetry.emit("ARBITRATOR_DECISION", command="BOTH_IMAGE")  # если логируешь
+            print("ARBITRATOR → BOTH")
             return decision
 
         # ───────────────────────────────────────────────────────────────
-        # 2. Fallback — только один канал изображения, но достаточно уверенный
+        # 2. Fallback — используем только один канал позиции,
+        #    если он достаточно уверенный (даже если второй слабый или отсутствует)
         # ───────────────────────────────────────────────────────────────
+        fallback_threshold = self.min_image_conf * 0.85   # можно подкрутить: 0.7–0.9
+
         image_ok_x_only = (
             cx is not None and
-            cx.value >= self.fallback_image_conf
-            # и cy либо отсутствует, либо слишком слабый — не проверяем cy.value
+            cx.value >= fallback_threshold
         )
 
         image_ok_y_only = (
             cy is not None and
-            cy.value >= self.fallback_image_conf
+            cy.value >= fallback_threshold
         )
 
-        if image_ok_x_only and not image_ok_y_only:
+        if image_ok_x_only:
             decision = Channel.IMAGE_X
+            print(f"ARBITRATOR → X only (conf={cx.value:.3f})")
             # telemetry.emit("ARBITRATOR_FALLBACK", channel="IMAGE_X_ONLY", conf=cx.value)
             return decision
 
-        if image_ok_y_only and not image_ok_x_only:
+        if image_ok_y_only:
             decision = Channel.IMAGE_Y
+            print(f"ARBITRATOR → Y only (conf={cy.value:.3f})")
             # telemetry.emit("ARBITRATOR_FALLBACK", channel="IMAGE_Y_ONLY", conf=cy.value)
             return decision
 
         # ───────────────────────────────────────────────────────────────
-        # 3. Angle и Omega — без изменений
+        # 3. Вторичные каналы (angle, omega) — без изменений
         # ───────────────────────────────────────────────────────────────
         angle_ok = (
             angle is not None and
@@ -86,13 +88,15 @@ class Arbitrator:
 
         if angle_ok:
             decision = Channel.ANGLE
+            print(f"ARBITRATOR → angle only (conf={angle.value:.3f})")
             return decision
 
         if omega_ok:
             decision = Channel.OMEGA
+            print(f"ARBITRATOR → omega only (conf={omega.value:.3f})")
             return decision
 
         # ───────────────────────────────────────────────────────────────
-        # Ничего не выбрано → HOLD
+        # Ничего подходящего не нашлось → HOLD
         # ───────────────────────────────────────────────────────────────
         return None

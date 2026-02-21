@@ -175,8 +175,6 @@ class OpticalVelocityControllerV2:
 
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
-        print(f"[{ts}] ARBITRATOR select input: {list(channels.keys())} → output: {decision}")
-# или telemetry.emit("ARBITRATOR_INTERNAL", decision=str(decision), channels=str(list(channels.keys())))
 
         self._debug_arbitrator_decision(command)
 
@@ -218,21 +216,24 @@ class OpticalVelocityControllerV2:
                     print("gain", gain)
                     self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-I")
                     scaled_commands[ch] = raw_command[ch] * gain
+                    self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "both")
                     self._debug_log_scale_debug(
                         channel=ch,
-                        raw_command = raw_command[ch],
+                        raw_command_value = raw_command[ch],
                         scaled_commands = {ch: scaled_commands[ch]},
                         gain=gain
                     )
             else:
+                ch = command
                 gain = self.scheduler.gain(gated_channels[command].value)
                 print("raw_command[command] ", raw_command[command])
                 print("gain", gain)
                 self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "type-II")
                 scaled_commands[command] = raw_command[command] * gain
+                self._debug_log_raw_command_gain(ch, raw_command[ch], gain, "single")
                 self._debug_log_scale_debug(
                         channel=ch,
-                        raw_command = raw_command[ch],
+                        raw_command_value = raw_command[ch],
                         scaled_commands = {ch: scaled_commands[ch]},
                         gain=gain
                     )
@@ -318,12 +319,13 @@ class OpticalVelocityControllerV2:
             )
 
     def _debug_log_gated_channel(self, gated_channels: dict[Channel, ChannelConfidence]):
-        for channel, channel_confidence in gated_channels:
+        for channel, channel_confidence in gated_channels.items():   # ← .items() !
             telemetry.emit(
                 event=TelemetryEvents.GATED_CHANNEL_CONFIDENCE.name,
                 channel=channel.name,
                 channel_confidence=json.dumps(channel_confidence.to_dict())
             )
+            
   
     def _debug_log_raw_command(self, raw_command: dict[Channel, any]):
         for channel, data in raw_command.items():
@@ -351,7 +353,7 @@ class OpticalVelocityControllerV2:
         for channel, command_value in scaled_commands.items():
             telemetry.emit(
                 event=TelemetryEvents.SCALED_COMMAND.name,
-                channel=channel,
+                channel=channel.name,
                 value=command_value
             )
 
@@ -371,8 +373,36 @@ class OpticalVelocityControllerV2:
             scaled=scaled_value,
         )
 
-    def _debug_arbitrator_decision(self, command: Channel):
-        telemetry.emit(
-            event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
-            command=command.name if command else "None"
-        )
+    # def _debug_arbitrator_decision(self, command: Channel):
+    #     telemetry.emit(
+    #         event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+    #         command=command.name if command else "None"
+    #     )
+
+    def _debug_arbitrator_decision(self, command: Channel | tuple[Channel, Channel] | None) -> None:
+        if command is None:
+            telemetry.emit(
+                event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+                command="None"
+            )
+        elif isinstance(command, tuple):
+            # предполагаем, что это всегда пара (IMAGE_X, IMAGE_Y)
+            if len(command) == 2 and all(isinstance(c, Channel) for c in command):
+                telemetry.emit(
+                    event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+                    command="BOTH",
+                    channels=[command[0].name, command[1].name]
+                    # или command1=command[0].name, command2=command[1].name — как тебе удобнее
+                )
+            else:
+                telemetry.emit(
+                    event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+                    command="INVALID_TUPLE",
+                    length=len(command)
+                )
+        else:
+            # одиночный канал
+            telemetry.emit(
+                event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+                command=command.name
+            )

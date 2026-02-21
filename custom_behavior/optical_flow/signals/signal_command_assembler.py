@@ -41,5 +41,5 @@ class CommandAssembler:
             yaw=yaw
         )
 
-    def clamp(x, min_val, max_val):
+    def clamp(self, x, min_val, max_val):
         return max(min_val, min(x, max_val))

@@ -295,6 +295,7 @@ class ArbitratorThresholds:
     min_image_conf: float
     min_angle_conf: float
     min_omega_conf: float
+    fallback_image_conf: float
 
 class ArbitratorConfig:
     """Predefined threshold sets for the Arbitrator."""
@@ -304,8 +305,8 @@ class ArbitratorConfig:
         return ArbitratorThresholds(
             min_image_conf=0.6,
             min_angle_conf=0.55,
-            min_omega_conf=0.5
-
+            min_omega_conf=0.5,
+            fallback_image_conf=0.85
         )
     
     @staticmethod
@@ -313,7 +314,8 @@ class ArbitratorConfig:
         return ArbitratorThresholds(
             min_image_conf=0.5,
             min_angle_conf=0.45,
-            min_omega_conf=0.4
+            min_omega_conf=0.4,
+            fallback_image_conf=0.55
         )
 
     @staticmethod
@@ -321,7 +323,8 @@ class ArbitratorConfig:
         return ArbitratorThresholds(
             min_image_conf=0.4,
             min_angle_conf=0.34,
-            min_omega_conf=0.3
+            min_omega_conf=0.3,
+            fallback_image_conf=0.35
         )
 
 
@@ -353,7 +356,7 @@ class SignalGateConfig:
     @staticmethod
     def loose() -> SignalGateThresholds:
         return SignalGateThresholds(
-            enable_threshold=0.5,
-            disable_threshold=0.3,
-            min_confidence_time_ms=25
+            enable_threshold=0.4,
+            disable_threshold=0.25,
+            min_confidence_time_ms=0
         )
