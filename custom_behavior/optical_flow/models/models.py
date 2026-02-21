@@ -10,4 +10,5 @@ class TelemetryEvents(Enum):
     GATED_CHANNEL_CONFIDENCE = auto(),
     SCALE_DEBUG = auto(),
     RAW_COMMAND = auto(),
-    RAW_COMMAND_GAIN = auto()
+    RAW_COMMAND_GAIN = auto(),
+    ARBITRATOR_DECISION_COMMAND = auto()

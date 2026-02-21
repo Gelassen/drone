@@ -112,3 +112,4 @@ mav.tlog
 mav.tlog.raw
 terrain/
 ardupilot/*
+custom_behavior/logs.txt

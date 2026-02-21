@@ -347,7 +347,7 @@ class SignalGateConfig:
         return SignalGateThresholds(
             enable_threshold=0.55,
             disable_threshold=0.40,
-            min_confidence_time_ms=50
+            min_confidence_time_ms=33
         )
 
     @staticmethod
@@ -355,5 +355,5 @@ class SignalGateConfig:
         return SignalGateThresholds(
             enable_threshold=0.5,
             disable_threshold=0.3,
-            min_confidence_time_ms=35
+            min_confidence_time_ms=25
         )

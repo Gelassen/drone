@@ -44,8 +44,8 @@ class OpticalVelocityControllerV2:
     def __init__(
             self,
             scheduler = AdaptiveGainScheduler(min_conf=0.35, max_conf=0.75), # TODO: tune me
-            arbitrator = Arbitrator(config=ArbitratorConfig.moderate()),
-            signal_gate = SignalGate(config=SignalGateConfig.moderate()),
+            arbitrator = Arbitrator(config=ArbitratorConfig.loose()),
+            signal_gate = SignalGate(config=SignalGateConfig.loose()),
             confidence_layer = ConfidenceLayer.with_default_weights(),
             signal_evaluator = SignalEvaluator(SignalBuffer()),
             signal_util = SignalsUtil(),
@@ -175,6 +175,10 @@ class OpticalVelocityControllerV2:
 
         # --- Arbitration ---
         command = self.arbitrator.select(gated_channels)
+        print(f"[{ts}] ARBITRATOR select input: {list(channels.keys())} → output: {decision}")
+# или telemetry.emit("ARBITRATOR_INTERNAL", decision=str(decision), channels=str(list(channels.keys())))
+
+        self._debug_arbitrator_decision(command)
 
         # --- Generate raw command values per channel ---
         raw_command = {
@@ -365,4 +369,10 @@ class OpticalVelocityControllerV2:
             raw=raw_command_value,
             gain=gain,
             scaled=scaled_value,
+        )
+
+    def _debug_arbitrator_decision(self, command: Channel):
+        telemetry.emit(
+            event=TelemetryEvents.ARBITRATOR_DECISION_COMMAND.name,
+            command=command.name if command else "None"
         )
