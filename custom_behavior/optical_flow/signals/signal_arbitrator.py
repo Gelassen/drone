@@ -14,7 +14,7 @@ class Arbitrator:
         self.min_omega_conf = config.min_omega_conf
         
         # порог для fallback-режима — немного ниже основного, чтобы не пропускать совсем слабый сигнал
-        self.fallback_image_conf = self.fallback_image_conf#self.min_image_conf * 0.6 #0.9   # например 0.5 → 0.45
+        self.fallback_image_conf = config.fallback_image_conf#self.min_image_conf * 0.6 #0.9   # например 0.5 → 0.45
 
     def select(self, channels: dict[Channel, ChannelConfidence]) -> Channel | tuple[Channel, Channel] | None:
         """
