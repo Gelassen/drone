@@ -76,6 +76,10 @@ $ echo 'export GZ_SIM_RESOURCE_PATH=$HOME/gz_ws/src/ardupilot_gazebo/models:$HOM
 
 $ chmod +x run_sitl_gazebo.sh
 $ ./run_sitl_gazebo.sh
+
+When simulation will be deploiyed and GPS will be set (!), run the command below:
+$ cd drone
+$ python -m custom_behavior.optical_flow.optical_flow_v1
 ```
 
 Related publications:
