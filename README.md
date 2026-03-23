@@ -110,3 +110,27 @@ Arbitrator (cx vs cy vs angle vs omega)
 Adaptive Gain Scheduler
         ↓
 Control Command (roll / pitch)
+
+### Betflight FC access
+
+$ sudo minicom -D /dev/ttyACM0 -b 115200
+
+Enter into console
+
+$ #
+
+Commands
+
+$ version
+
+$ feature
+
+$ resource
+
+$ get serialrx_provider
+
+$ status
+
+$ rxstatus
+
+$ rxrange
