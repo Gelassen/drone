@@ -84,6 +84,8 @@ $ python -m custom_behavior.optical_flow.optical_flow_v1
 
 Related publications:
 
+<a href="https://gelassen.github.io/blog/2026/01/10/flying-drone-diy-part-V.html">Flying Drone DIY, Part V: Flying Drone DIY, part V: custom autopilot programs -- improving computer vision of drone</a>
+
 <a href="https://gelassen.github.io/blog/2025/10/18/flying-drone-diy-part-III.html">Flying Drone DIY, Part III: Assembling and Tuning</a>
 
 <a href="https://gelassen.github.io/blog/2025/05/17/flying-drone-diy-part-II.html">Flying drone DIY, part II: configuration for the 1st version</a>
